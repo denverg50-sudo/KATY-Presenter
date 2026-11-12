@@ -1,0 +1,39 @@
+{
+  "name": "selah-presenter",
+  "productName": "Selah Presenter",
+  "version": "0.1.0",
+  "description": "Song lyrics and Bible verse presentation software for churches",
+  "author": "Selah Presenter",
+  "license": "MIT",
+  "main": "./out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "start": "electron-vite preview",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dist:mac": "npm run build && node scripts/dist.cjs --mac",
+    "dist:win": "npm run build && node scripts/dist.cjs --win",
+    "dist": "npm run build && node scripts/dist.cjs"
+  },
+  "dependencies": {
+    "adm-zip": "^0.6.1",
+    "minisearch": "^7.2.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zustand": "^5.1.0"
+  },
+  "devDependencies": {
+    "@types/adm-zip": "^0.5.8",
+    "@types/node": "^26.6.6",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0",
+    "electron-vite": "^6.0.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0"
+  }
+}

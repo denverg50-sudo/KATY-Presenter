@@ -1,0 +1,49 @@
+appId: app.selahpresenter.desktop
+productName: Selah Presenter
+copyright: Copyright © 2026 Selah Presenter
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**
+  - resources/**
+  - package.json
+afterPack: build/afterPack.cjs
+asarUnpack:
+  - resources/**
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  # No paid Apple certificate yet: ad-hoc sign so macOS reports "unverified developer"
+  # (user clicks Open Anyway) rather than "damaged". Replace with your Developer ID later.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  extendInfo:
+    NSHighResolutionCapable: true
+dmg:
+  artifactName: Selah-Presenter-${version}-mac-${arch}.${ext}
+  title: Selah Presenter ${version}
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+nsis:
+  artifactName: Selah-Presenter-Setup-${version}.${ext}
+  oneClick: true
+  perMachine: false
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Selah Presenter
+  deleteAppDataOnUninstall: false
+
+linux:
+  target: [AppImage]
+  category: Office
+
+# Installers are uploaded to GitHub Releases by .github/workflows/release.yml
+publish: null

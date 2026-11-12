@@ -1,0 +1,130 @@
+import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, shell } from 'electron'
+import path from 'path'
+import { pathToFileURL } from 'url'
+import { Storage } from './storage'
+import {
+  applyOutput,
+  broadcast,
+  createControlWindow,
+  getControl,
+  getLive,
+  listDisplays,
+  setLive
+} from './windows'
+import { checkForUpdate } from './update'
+import { runSmoke, smokeSetup } from './smoke'
+import type { Kind, LiveState, Settings } from '../shared/types'
+
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'media', privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } }
+])
+
+// One copy of the app at a time; a second launch focuses the first
+if (!app.requestSingleInstanceLock()) app.quit()
+app.on('second-instance', () => {
+  const win = getControl()
+  if (win) {
+    if (win.isMinimized()) win.restore()
+    win.focus()
+  }
+})
+
+const smokeDir = smokeSetup()
+const storage = new Storage(path.join(app.getPath('userData'), 'library'))
+
+const MEDIA_FILTERS = [
+  { name: 'Images & videos', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'm4v'] }
+]
+
+function registerIpc(): void {
+  ipcMain.handle('db:list', (_e, kind: Kind) => storage.list(kind))
+  ipcMain.handle('db:save', (_e, kind: Kind, item: { id: string }) => storage.save(kind, item))
+  ipcMain.handle('db:remove', (_e, kind: Kind, id: string) => storage.remove(kind, id))
+
+  ipcMain.handle('settings:get', () => storage.getSettings())
+  ipcMain.handle('settings:save', async (_e, s: Settings) => {
+    const saved = await storage.saveSettings(s)
+    applyOutput(saved)
+    return saved
+  })
+
+  ipcMain.handle('media:import', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)!
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Add backgrounds',
+      properties: ['openFile', 'multiSelections'],
+      filters: MEDIA_FILTERS
+    })
+    return r.canceled ? [] : storage.importMedia(r.filePaths)
+  })
+  ipcMain.handle('media:list', () => storage.listMedia())
+
+  ipcMain.handle('displays:list', () => listDisplays())
+
+  ipcMain.on('live:set', (_e, state: LiveState) => setLive(state))
+  ipcMain.handle('live:get', () => getLive())
+
+  ipcMain.handle('backup:export', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)!
+    const stamp = new Date().toISOString().slice(0, 10)
+    const r = await dialog.showSaveDialog(win, {
+      title: 'Back up library',
+      defaultPath: `Selah Backup ${stamp}.zip`,
+      filters: [{ name: 'Zip', extensions: ['zip'] }]
+    })
+    if (r.canceled || !r.filePath) return null
+    await storage.exportZip(r.filePath)
+    return r.filePath
+  })
+  ipcMain.handle('backup:import', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)!
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Restore backup',
+      properties: ['openFile'],
+      filters: [{ name: 'Zip', extensions: ['zip'] }]
+    })
+    if (r.canceled || !r.filePaths[0]) return false
+    await storage.importZip(r.filePaths[0])
+    return true
+  })
+
+  ipcMain.handle('update:check', async () => checkForUpdate((await storage.getSettings()).updateRepo))
+  ipcMain.on('open-external', (_e, url: string) => {
+    if (/^https:\/\//.test(url)) void shell.openExternal(url)
+  })
+}
+
+app.whenReady().then(async () => {
+  await storage.init()
+
+  protocol.handle('media', (req) => {
+    const name = decodeURIComponent(new URL(req.url).pathname.replace(/^\//, ''))
+    const file = storage.mediaPath(name)
+    if (!file) return new Response('Not found', { status: 404 })
+    // Forward Range headers so videos can stream and loop
+    return net.fetch(pathToFileURL(file).toString(), { headers: req.headers })
+  })
+
+  registerIpc()
+  createControlWindow()
+  applyOutput(await storage.getSettings())
+
+  const onDisplays = async (): Promise<void> => {
+    applyOutput(await storage.getSettings())
+    broadcast('displays:changed')
+  }
+  screen.on('display-added', onDisplays)
+  screen.on('display-removed', onDisplays)
+  screen.on('display-metrics-changed', onDisplays)
+
+  if (smokeDir) void runSmoke(smokeDir)
+
+  app.on('activate', async () => {
+    if (!getControl()) {
+      createControlWindow()
+      applyOutput(await storage.getSettings())
+    }
+  })
+})
+
+app.on('window-all-closed', () => app.quit())

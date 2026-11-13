@@ -94,6 +94,59 @@ describe('assembleSong', () => {
   })
 })
 
+describe('assembleSong notes and fallbacks', () => {
+  it('falls back to written order when no order entry is usable', () => {
+    const s = [verse1, { name: 'Blank', slides: [' '] }, chorus]
+    for (const order of [[9, -1], [1]]) {
+      const r = assembleSong(s, order)
+      expect(r.notes).toContain("Play order didn't match any lyrics; used the written order")
+      expect(r.lyrics).toContain('[Verse]')
+      expect(r.lyrics).toContain('[Chorus]')
+    }
+  })
+
+  it('notes sections left out of the play order', () => {
+    const r = assembleSong([verse1, chorus, verse2], [0])
+    expect(r.notes).toEqual(['2 sections not in the play order left out'])
+    expect(assembleSong([verse1, chorus], [0]).notes).toEqual(['1 section not in the play order left out'])
+  })
+
+  it('notes ignored order entries', () => {
+    expect(assembleSong([verse1, chorus], [0, 5, 1]).notes).toEqual(['1 play-order entry ignored'])
+    expect(assembleSong([verse1, chorus], [0, 5, 7, 1]).notes).toEqual(['2 play-order entries ignored'])
+  })
+
+  it('notes bracket lines changed', () => {
+    const one = assembleSong([{ name: 'A', slides: ['[x]'] }], [])
+    expect(one.notes).toEqual(['1 line in [brackets] changed to (brackets)'])
+    const two = assembleSong([{ name: 'A', slides: ['[x]\n[y]'] }], [])
+    expect(two.notes).toEqual(['2 lines in [brackets] changed to (brackets)'])
+  })
+})
+
+describe('assembleSong extra round trips', () => {
+  it('Chorus next to a section abbreviated C', () => {
+    const s: RawSection[] = [
+      { name: 'Chorus', slides: ['a'] },
+      { name: 'C', slides: ['b'] }
+    ]
+    expect(roundTrip(s, [1, 0, 1])).toEqual(['b', 'a', 'b'])
+  })
+  it('case-differing duplicate names', () => {
+    const s: RawSection[] = [
+      { name: 'verse', slides: ['a'] },
+      { name: 'Verse', slides: ['b'] }
+    ]
+    expect(roundTrip(s, [1, 0, 1])).toEqual(['b', 'a', 'b'])
+  })
+  it('reversed order, no repeats', () => {
+    const s = [verse1, chorus]
+    const r = assembleSong(s, [1, 0])
+    expect(r.arrangement).toBe('')
+    expect(roundTrip(s, [1, 0])).toEqual([...chorus.slides, ...verse1.slides])
+  })
+})
+
 describe('normalizeTitle', () => {
   it('ignores case, punctuation and spacing', () => {
     expect(normalizeTitle('  Amazing   Grace! ')).toBe(normalizeTitle('amazing grace'))
@@ -107,5 +160,6 @@ describe('sectionNameFromCode', () => {
     expect(sectionNameFromCode('c2')).toBe('Chorus 2')
     expect(sectionNameFromCode('p')).toBe('Pre-Chorus')
     expect(sectionNameFromCode('x9')).toBe('X9')
+    expect(sectionNameFromCode('')).toBe('')
   })
 })

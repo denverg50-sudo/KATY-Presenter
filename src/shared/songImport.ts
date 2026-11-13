@@ -22,13 +22,17 @@ export interface ImportedSong {
 const TAG_LINE = /^\[[^\]]+\]$/
 
 /** Trim lines, drop empty lines, and neutralise lines that would be read as a `[Tag]`. */
-function cleanSlide(text: string): string {
+function cleanSlide(text: string, onBracket: () => void): string {
   return text
     .replace(/\r\n?/g, '\n')
     .split('\n')
     .map((l) => l.trim())
     .filter(Boolean)
-    .map((l) => (TAG_LINE.test(l) ? `(${l.slice(1, -1)})` : l))
+    .map((l) => {
+      if (!TAG_LINE.test(l)) return l
+      onBracket()
+      return `(${l.slice(1, -1)})`
+    })
     .join('\n')
 }
 
@@ -45,10 +49,11 @@ export function assembleSong(
   order: number[]
 ): { lyrics: string; arrangement: string; notes: string[] } {
   let blanks = 0
+  let bracketed = 0
   const cleaned = sections.map((s) => {
     const slides: string[] = []
     for (const raw of s.slides) {
-      const c = cleanSlide(raw)
+      const c = cleanSlide(raw, () => bracketed++)
       if (c) slides.push(c)
       else blanks++
     }
@@ -56,7 +61,15 @@ export function assembleSong(
   })
 
   const valid = (i: number): boolean => Number.isInteger(i) && !!cleaned[i] && cleaned[i].slides.length > 0
-  const play = order.length ? order.filter(valid) : cleaned.map((_, i) => i).filter(valid)
+  const written = cleaned.map((_, i) => i).filter(valid)
+  const ignored = order.filter((i) => !valid(i)).length
+  let play = order.filter(valid)
+  let fellBack = false
+  if (!order.length) play = written
+  else if (!play.length) {
+    play = written
+    fellBack = true
+  }
   const firsts = [...new Set(play)]
 
   // number duplicated names, in order of first appearance
@@ -103,7 +116,17 @@ export function assembleSong(
   }
 
   const repeats = play.length !== firsts.length
-  const notes = blanks ? [`${blanks} blank slide${blanks === 1 ? '' : 's'} left out`] : []
+  const notes: string[] = []
+  if (blanks) notes.push(`${blanks} blank slide${blanks === 1 ? '' : 's'} left out`)
+  if (bracketed) {
+    notes.push(`${bracketed} line${bracketed === 1 ? '' : 's'} in [brackets] changed to (brackets)`)
+  }
+  if (fellBack) notes.push("Play order didn't match any lyrics; used the written order")
+  else {
+    if (ignored) notes.push(`${ignored} play-order ${ignored === 1 ? 'entry' : 'entries'} ignored`)
+    const omitted = written.filter((i) => !firsts.includes(i)).length
+    if (omitted) notes.push(`${omitted} section${omitted === 1 ? '' : 's'} not in the play order left out`)
+  }
   return {
     lyrics: sectionsToLyrics(finalSections),
     arrangement: repeats ? play.map((i) => abbrOf.get(i)!).join(' ') : '',

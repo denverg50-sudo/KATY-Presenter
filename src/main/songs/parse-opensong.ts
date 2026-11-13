@@ -67,7 +67,7 @@ export function parseOpenSong(xml: string, file: string): ImportedSong {
     const slides: string[] = []
     let slide: string[] = []
     const flush = (): void => {
-      slides.push(slide.join('\n'))
+      if (slide.length) slides.push(slide.join('\n'))
       slide = []
     }
     for (const l of lines) {

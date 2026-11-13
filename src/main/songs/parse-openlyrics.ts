@@ -17,8 +17,9 @@ export function parseOpenLyrics(xml: string, file: string): ImportedSong {
 
   const sections: RawSection[] = []
   const byName = new Map<string, number>()
+  const langOf = new Map<string, string>()
   let skippedVerses = 0
-  let verse: { name: string; slides: string[] } | null = null // null when skipped or outside a verse
+  let verse: { name: string | null; slides: string[] } | null = null // null when skipped or outside a verse
   let inVerse = false
   let lines: string[] | null = null
   let commentDepth = 0
@@ -33,11 +34,17 @@ export function parseOpenLyrics(xml: string, file: string): ImportedSong {
     if (name === 'verse') {
       inVerse = true
       const vname = (a.name ?? '').trim()
-      if (!vname || byName.has(vname.toLowerCase())) {
-        skippedVerses++
-        verse = null
+      const lang = (a.lang ?? '').trim().toLowerCase()
+      const key = vname.toLowerCase()
+      if (vname && byName.has(key)) {
+        const first = langOf.get(key) ?? ''
+        if ((lang && first && lang !== first) || !!lang !== !!first) {
+          skippedVerses++
+          verse = null
+        } else verse = { name: vname, slides: [] }
       } else {
-        verse = { name: vname, slides: [] }
+        if (vname) langOf.set(key, lang)
+        verse = { name: vname || null, slides: [] }
       }
     } else if (inVerse && name === 'lines' && verse) {
       lines = []
@@ -76,8 +83,8 @@ export function parseOpenLyrics(xml: string, file: string): ImportedSong {
       lines = null
     } else if (name === 'verse') {
       if (verse) {
-        byName.set(verse.name.toLowerCase(), sections.length)
-        sections.push({ name: sectionNameFromCode(verse.name), slides: verse.slides })
+        if (verse.name && !byName.has(verse.name.toLowerCase())) byName.set(verse.name.toLowerCase(), sections.length)
+        sections.push({ name: verse.name ? sectionNameFromCode(verse.name) : null, slides: verse.slides })
       }
       verse = null
       inVerse = false
@@ -112,7 +119,7 @@ export function parseOpenLyrics(xml: string, file: string): ImportedSong {
   const assembled = assembleSong(sections, order)
   const notes: string[] = []
   if (unknown.length) notes.push(`Play order mentions unknown verse${unknown.length === 1 ? '' : 's'}: ${unknown.join(', ')}`)
-  if (skippedVerses) notes.push(`${skippedVerses} repeated verse${skippedVerses === 1 ? '' : 's'} (other languages) skipped`)
+  if (skippedVerses) notes.push(`${skippedVerses} verse${skippedVerses === 1 ? '' : 's'} in other languages skipped`)
 
   return {
     title: title || file.replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, ''),

@@ -50,6 +50,27 @@ describe('parseOpenLyrics', () => {
     expect(s.notes.join(' ')).toMatch(/language/i)
   })
 
+  const ol = (v: string): string =>
+    `<song xmlns="http://openlyrics.info/namespace/2009/song"><properties><titles><title>T</title></titles></properties><lyrics>${v}</lyrics></song>`
+
+  it('keeps same-name same-language verses and unnamed verses', () => {
+    const s = parseOpenLyrics(
+      ol('<verse name="v1" lang="en"><lines>One</lines></verse><verse name="v1" lang="en"><lines>Two</lines></verse><verse><lines>Loose</lines></verse>'),
+      't.xml'
+    )
+    expect(s.lyrics).toBe('[Verse 1 1]\nOne\n\n[Verse 1 2]\nTwo\n\n[Slide 1]\nLoose')
+    expect(s.notes.join(' ')).not.toMatch(/language/i)
+  })
+
+  it('skips different-language verses with a language note', () => {
+    const s = parseOpenLyrics(
+      ol('<verse name="v1" lang="en"><lines>One</lines></verse><verse name="v1" lang="de"><lines>Eins</lines></verse>'),
+      't.xml'
+    )
+    expect(s.lyrics).toBe('[Verse 1]\nOne')
+    expect(s.notes).toEqual(['1 verse in other languages skipped'])
+  })
+
   it('throws when there are no lyrics or the xml is bad', () => {
     expect(() => parseOpenLyrics('<song><lyrics/></song>', 'x.xml')).toThrow('No lyrics found in this OpenLyrics song')
     expect(() => parseOpenLyrics('<song>', 'x.xml')).toThrow()
@@ -92,6 +113,12 @@ describe('parseOpenSong', () => {
     const s = parseOpenSong(wrap('[V1]\n a\n[C]\n b', 'V1 C Z9 C'), 't.xml')
     expect(s.arrangement).toBe('V1 C C')
     expect(s.notes.join(' ')).toMatch(/Z9/)
+  })
+
+  it('adds no notes for blank lines between sections or a trailing ||', () => {
+    const s = parseOpenSong(wrap('[V1]\n a\n b||\n\n[C]\n c\n||\n\n'), 't.xml')
+    expect(s.lyrics).toBe('[Verse]\na\nb\n\n[Chorus]\nc'.replace('[Verse]', '[Verse 1]'))
+    expect(s.notes).toEqual([])
   })
 
   it('reads CDATA lyrics and throws without lyrics', () => {

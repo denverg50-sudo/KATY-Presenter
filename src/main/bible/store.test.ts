@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
@@ -124,5 +124,33 @@ describe('BibleStore', () => {
     const f = path.join(mkdtempSync(path.join(tmpdir(), 'bible-sq-')), 'x.sqlite')
     writeFileSync(f, Buffer.from(db.export()))
     expect(await store.prepareImport([f])).toEqual({ error: "x.sqlite isn't an OpenLP Bible database" })
+  })
+
+  it('de-duplicates concurrent loads of the same Bible', async () => {
+    const spy = vi.spyOn(store as unknown as { readBible: (id: string) => Promise<unknown> }, 'readBible')
+    await Promise.all([store.passage('kjv', 'John 3:1'), store.passage('kjv', 'John 3:2'), store.search('kjv', 'Second')])
+    expect(spy).toHaveBeenCalledTimes(1)
+    await store.passage('kjv', 'John 3:1')
+    expect(spy).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not cache a failed load', async () => {
+    const spy = vi.spyOn(store as unknown as { readBible: (id: string) => Promise<unknown> }, 'readBible')
+    const r = await Promise.all([store.passage('zzz', 'John 3:1'), store.passage('zzz', 'John 3:1')])
+    expect(r[0]).toHaveProperty('error')
+    expect(spy).toHaveBeenCalledTimes(1)
+    await store.passage('zzz', 'John 3:1')
+    expect(spy).toHaveBeenCalledTimes(2)
+  })
+
+  it('keeps only the latest prepared import and supports cancel', async () => {
+    const a = await prep()
+    const b = await prep('opensong.xml')
+    await expect(store.commitImport(a.token, { name: 'x', abbrev: 'x', replaceId: null })).rejects.toThrow(/expired or was cancelled/)
+    store.cancelImport(b.token)
+    await expect(store.commitImport(b.token, { name: 'x', abbrev: 'x', replaceId: null })).rejects.toThrow(/expired or was cancelled/)
+    const c = await prep()
+    store.cancelImport('other')
+    await expect(store.commitImport(c.token, { name: 'c', abbrev: 'c', replaceId: null })).resolves.toBeTruthy()
   })
 })

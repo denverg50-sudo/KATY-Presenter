@@ -40,7 +40,8 @@ const sameAbbrev = (a: string, b: string): boolean => a.trim().toLowerCase() ===
 export class BibleStore {
   private cache = new Map<string, Bible>() // insertion order = LRU order
   private builtInMeta = new Map<string, BibleMeta>()
-  private pending = new Map<string, ParsedBible>()
+  private inflight = new Map<string, Promise<Bible>>()
+  private pending: { token: string; parsed: ParsedBible } | null = null // only the latest prepared import is kept
 
   constructor(
     private libraryDir: string,
@@ -123,6 +124,22 @@ export class BibleStore {
       this.remember(hit)
       return hit
     }
+    let p = this.inflight.get(id)
+    if (!p) {
+      p = this.readBible(id).then((b) => {
+        if (this.inflight.get(id) === p) this.remember(b)
+        return b
+      })
+      this.inflight.set(id, p)
+      const clear = (): void => {
+        if (this.inflight.get(id) === p) this.inflight.delete(id)
+      }
+      p.then(clear, clear)
+    }
+    return p
+  }
+
+  private async readBible(id: string): Promise<Bible> {
     let bible: Bible | null = null
     if (BUILT_IN_IDS.includes(id)) {
       bible = await this.builtInFile(id)
@@ -138,8 +155,16 @@ export class BibleStore {
       }
     }
     if (!bible) throw new Error(`Bible not found: ${id}`)
-    this.remember(bible)
     return bible
+  }
+
+  private invalidate(id: string): void {
+    this.cache.delete(id)
+    this.inflight.delete(id)
+  }
+
+  cancelImport(token: string): void {
+    if (this.pending?.token === token) this.pending = null
   }
 
   async passage(bibleId: string, refText: string): Promise<Passage | { error: string }> {
@@ -164,7 +189,7 @@ export class BibleStore {
       return { error: e instanceof Error ? e.message : String(e) }
     }
     const token = randomUUID()
-    this.pending.set(token, parsed)
+    this.pending = { token, parsed }
     const probe = metaOf({ ...parsed, id: '', builtIn: false })
     const existing = (await this.importMetas()).find((m) => sameAbbrev(m.abbrev, parsed.abbrev)) ?? null
     return {
@@ -181,8 +206,8 @@ export class BibleStore {
   }
 
   async commitImport(token: string, opts: { name: string; abbrev: string; replaceId: string | null }): Promise<BibleMeta> {
-    const parsed = this.pending.get(token)
-    if (!parsed) throw new Error('This import has expired. Please choose the file again.')
+    const parsed = this.pending?.token === token ? this.pending.parsed : null
+    if (!parsed) throw new Error('This import has expired or was cancelled. Please choose the file again.')
     let id: string
     if (opts.replaceId) {
       const target = (await this.importMetas()).find((m) => m.id === opts.replaceId)
@@ -202,8 +227,8 @@ export class BibleStore {
     const meta = metaOf(bible)
     await fs.mkdir(this.dir, { recursive: true })
     await writeAtomic(this.importFile(id), JSON.stringify({ meta, bible } satisfies ImportFile))
-    this.pending.delete(token)
-    this.cache.delete(id)
+    this.pending = null
+    this.invalidate(id)
     return meta
   }
 
@@ -221,6 +246,7 @@ export class BibleStore {
         await writeAtomic(path.join(this.dir, 'overrides.json'), JSON.stringify(ov, null, 2))
         const cached = this.cache.get(id)
         if (cached) cached.abbrev = abbrev
+        this.inflight.delete(id)
       }
       return { ...cur, abbrev: abbrev || cur.abbrev } // built-in names are fixed
     }
@@ -234,7 +260,7 @@ export class BibleStore {
     if (name) j.bible.name = j.meta.name = name
     if (abbrev) j.bible.abbrev = j.meta.abbrev = abbrev
     await writeAtomic(file, JSON.stringify(j))
-    this.cache.delete(id)
+    this.invalidate(id)
     return j.meta
   }
 
@@ -242,6 +268,6 @@ export class BibleStore {
     if (BUILT_IN_IDS.includes(id)) throw new Error('Built-in Bibles can’t be deleted')
     const file = this.importFile(id)
     await fs.rm(file, { force: true })
-    this.cache.delete(id)
+    this.invalidate(id)
   }
 }

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { BOOKS, findBook, bookName, isSingleChapter } from './books'
 import {
-  parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK, mapSlideIndex
+  parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK, mapSlideIndex, NOT_IN_TRANSLATION
 } from './scripture'
 import type { Bible } from './types'
 
@@ -153,6 +153,15 @@ describe('buildScriptureSlides', () => {
     const s = buildScriptureSlides(pass('John 3:4-4:1'), 3, false)
     expect(s).toHaveLength(1)
     expect(s[0].label).toBe('3:4–4:1')
+  })
+  it('marks a verse the translation leaves out', () => {
+    const bible: Bible = { ...mkBible(), books: [{ num: 40, chapters: [[], ['One.', '', 'Three.']] }] }
+    const p = getPassage(bible, ref('Matt 2:1-3'))
+    if ('error' in p) throw new Error(p.error)
+    expect(buildScriptureSlides(p, 3, true)[0].text).toBe(
+      `${VERSE_MARK(1)} One. ${VERSE_MARK(2)} (not in this translation) ${VERSE_MARK(3)} Three.`
+    )
+    expect(buildScriptureSlides(p, 1, false)[1].text).toBe(NOT_IN_TRANSLATION)
   })
   it('does not merge across range boundaries', () => {
     const slides = buildScriptureSlides(pass('John 3:1, 3'), 3, true)

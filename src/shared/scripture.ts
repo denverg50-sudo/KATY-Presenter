@@ -89,6 +89,9 @@ export function formatReference(ref: ScriptureRef): string {
 
 const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
 
+/** Shown for a verse a translation deliberately leaves out (e.g. BSB Matthew 17:21). */
+export const NOT_IN_TRANSLATION = '(not in this translation)'
+
 export const VERSE_MARK = (n: number): string => `⟦${n}⟧`
 
 export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: string } {
@@ -151,7 +154,12 @@ export function buildScriptureSlides(
     return {
       key: `s${i}`,
       label: full.slice(bookName(a.book).length + 1),
-      text: chunk.map((v) => (showVerseNumbers ? `${VERSE_MARK(v.v)} ${v.text}` : v.text)).join(' '),
+      text: chunk
+        .map((v) => {
+          const text = v.text.trim() ? v.text : NOT_IN_TRANSLATION
+          return showVerseNumbers ? `${VERSE_MARK(v.v)} ${text}` : text
+        })
+        .join(' '),
       footer: `${full} · ${p.abbrev}`
     }
   })

@@ -32,7 +32,10 @@ const api: Api = {
   bibleImportCancel: (token) => ipcRenderer.invoke('bible:import-cancel', token),
   bibleImportCommit: (token, opts) => ipcRenderer.invoke('bible:import-commit', token, opts),
   bibleUpdate: (id, patch) => ipcRenderer.invoke('bible:update', id, patch),
-  bibleRemove: (id) => ipcRenderer.invoke('bible:remove', id)
+  bibleRemove: (id) => ipcRenderer.invoke('bible:remove', id),
+  songImportPick: (mode) => ipcRenderer.invoke('song:import-pick', mode),
+  songImportCommit: (token, keys) => ipcRenderer.invoke('song:import-commit', token, keys),
+  songImportCancel: (token) => ipcRenderer.invoke('song:import-cancel', token)
 }
 
 contextBridge.exposeInMainWorld('api', api)

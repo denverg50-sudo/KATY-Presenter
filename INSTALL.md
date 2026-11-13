@@ -88,6 +88,57 @@ Files that work: Zefania XML, OpenSong XML (including `.xmm`), OSIS XML, USFX, O
 
 ---
 
+## Moving your songs from FreeShow
+
+You can bring your whole FreeShow song collection into Katy-Presenter in a few minutes.
+
+1. Find FreeShow's **Shows** folder. It is usually here:
+   - **Windows:** `Documents\FreeShow\Shows`
+   - **Mac:** `Documents/FreeShow/Shows` (inside your home folder)
+   - If you moved FreeShow's data somewhere else, FreeShow's own **Settings** show where it is.
+
+   **Try a small batch first.** Copy about 20 shows into a separate folder and import that folder. Check those songs (see below). When they look right, import the whole Shows folder. Songs you already imported are skipped automatically, so nothing is added twice.
+2. In Katy-Presenter, open **⚙ Settings → Songs** and click **Import songs from a folder…**. Choose the Shows folder.
+3. Wait a moment while the files are read. An **Import songs** window opens with a summary. Nothing is added yet.
+4. Read the summary:
+   - **✔ songs ready to import**: these will be added.
+   - **↷ already in your library or repeated**: skipped, because a song with the same title already exists. Click to see the list.
+   - **– not imported (category unticked)**: songs in a FreeShow category you have unticked (see step 5). Click to see the list.
+   - **⚠ imported with notes**: these will be added, but something was adjusted. Click to see what.
+   - **✖ couldn't be read**: these files will not be added. Click to see why.
+   - **other files ignored**: things that are not songs.
+5. Look at the tick boxes under **FreeShow categories**. Almost everything is ticked already, including **(none)**. Songs you filed under your own FreeShow categories appear as **Custom category (…)** and are ticked too. **Info**, **Presentation**, and anything named like announcements, notices, sermons, scripture or Bible are unticked. Untick anything else that isn't songs (for example announcement or sermon slides). Then check the **not imported (category unticked)** line, so you know which shows are being left out. The number on the button updates as you tick.
+6. Click **Import** (it shows how many songs). When it says **songs added**, click **Done**.
+
+Imported songs say **Imported from FreeShow** at the top of the song editor.
+
+Katy-Presenter comes with a sample **Amazing Grace**. If you import your own Amazing Grace and haven't edited the sample, the sample is replaced automatically by yours. If you have edited the sample, it is kept and your imported copy is skipped as a duplicate.
+
+**Please check before you stop using FreeShow.** We have not been able to test this with real FreeShow libraries from every church, so a quick spot check is wise:
+
+1. Read the summary again, especially the **⚠** and **✖** lists.
+2. Open a handful of imported songs. Pick some with a **repeated chorus** and make sure the verses and chorus come in the right order.
+3. Keep your FreeShow folder, and don't delete anything, until you are happy with the results.
+
+FreeShow's fonts, colours and backgrounds are not brought over. Imported songs use your Katy-Presenter themes instead.
+
+### Other song files
+
+**Import song files…** (in the same place) lets you pick individual files, and **Import songs from a folder…** also works for other kinds of song files. These work:
+
+- FreeShow `.show` files
+- OpenLyrics `.xml` (this is what OpenLP exports)
+- OpenSong
+- ChordPro (`.cho`, `.chopro`, `.chordpro`, `.pro`)
+- CCLI SongSelect `.usr` and `.txt` files
+- Plain `.txt` files
+
+Chords are left out; only the words are imported.
+
+These do **not** work: ProPresenter, EasyWorship, the OpenLP database, and FreeShow `.project` files.
+
+---
+
 ## Where your songs are stored
 
 - **Windows:** `%APPDATA%\Katy-Presenter\library`

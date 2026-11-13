@@ -60,6 +60,7 @@ function Editor({ initial }: { initial: Song }) {
             Title
             <input autoFocus value={song.title} onChange={(e) => update({ title: e.target.value })} />
           </label>
+          {song.source && <p className="sub song-source">Imported from {song.source}</p>}
           <div className="row">
             <label className="grow">
               Author

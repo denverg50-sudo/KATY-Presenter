@@ -1,8 +1,10 @@
 import { useEffect, useState } from 'react'
-import type { DisplayInfo } from '@shared/types'
+import type { DisplayInfo, SongImportPreview } from '@shared/types'
 import { Modal } from './Modal'
 import { MediaPicker } from './MediaPicker'
 import { BibleSettings } from './BibleSettings'
+import { ImportSongsDialog } from './ImportSongsDialog'
+import { ipcMessage } from './ImportBibleDialog'
 import { actions, useStore } from './store'
 
 export function SettingsDialog() {
@@ -84,6 +86,8 @@ function Settings() {
           />
         </label>
 
+        <SongSettings />
+
         <BibleSettings />
 
         <h3>Logo</h3>
@@ -109,5 +113,51 @@ function Settings() {
         {note && <p className="note">{note}</p>}
       </div>
     </Modal>
+  )
+}
+
+/** Settings → Songs: import from FreeShow and other song files. */
+function SongSettings() {
+  const [reading, setReading] = useState(false)
+  const [error, setError] = useState('')
+  const [preview, setPreview] = useState<SongImportPreview | null>(null)
+  // No new pick while one is being read or a preview (and its commit) is open: a new prepare replaces the pending batch
+  const locked = reading || preview !== null
+
+  const pick = async (mode: 'folder' | 'files'): Promise<void> => {
+    if (locked) return
+    setError('')
+    setReading(true)
+    try {
+      const r = await window.api.songImportPick(mode)
+      if (r) setPreview(r)
+    } catch (e) {
+      setError(ipcMessage(e))
+    } finally {
+      setReading(false)
+    }
+  }
+
+  return (
+    <>
+      <h3>Songs</h3>
+      <p className="hint">Bring songs over from FreeShow, OpenLyrics, OpenSong, ChordPro, SongSelect or plain text files.</p>
+      <div className="row">
+        <button disabled={locked} onClick={() => void pick('folder')}>
+          Import songs from a folder…
+        </button>
+        <button disabled={locked} onClick={() => void pick('files')}>
+          Import song files…
+        </button>
+      </div>
+      {reading && (
+        <p className="hint">
+          <span className="spinner" />
+          Reading files…
+        </p>
+      )}
+      {error && <p className="form-error">{error}</p>}
+      {preview && <ImportSongsDialog preview={preview} onClose={() => setPreview(null)} />}
+    </>
   )
 }

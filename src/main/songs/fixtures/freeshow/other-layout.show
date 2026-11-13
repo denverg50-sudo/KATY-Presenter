@@ -1,0 +1,103 @@
+{
+  "name": "Two Layouts",
+  "category": "songs",
+  "settings": {
+    "activeLayout": "gone"
+  },
+  "meta": {},
+  "slides": {
+    "a": {
+      "group": "Verse",
+      "color": null,
+      "notes": "",
+      "items": [
+        {
+          "style": "",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Verse words",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "b": {
+      "group": "Chorus",
+      "color": null,
+      "notes": "",
+      "items": [
+        {
+          "style": "",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Chorus words",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "c": {
+      "group": "Bridge",
+      "color": null,
+      "notes": "",
+      "items": [
+        {
+          "style": "",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Bridge words",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "one": {
+      "name": "Short",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        },
+        {
+          "id": "b"
+        }
+      ]
+    },
+    "two": {
+      "name": "Long",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        },
+        {
+          "id": "b"
+        },
+        {
+          "id": "c"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

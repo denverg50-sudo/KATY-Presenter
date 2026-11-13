@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song xmlns="http://openlyrics.info/namespace/2009/song" version="0.8" createdIn="OpenLP 2.4" modifiedIn="OpenLP 2.4" modifiedDate="2020-01-01T00:00:00">
+  <properties>
+    <titles>
+      <title>Amazing Grace</title>
+      <title>Grace Alternate</title>
+    </titles>
+    <authors>
+      <author>John Newton</author>
+      <author>Edwin Excell</author>
+    </authors>
+    <copyright>Public Domain</copyright>
+    <ccliNo>22025</ccliNo>
+    <verseOrder>v1 c v2 c</verseOrder>
+  </properties>
+  <lyrics>
+    <verse name="v1">
+      <lines>
+        <chord name="G"/>Amazing grace how sweet the sound<br/>That saved a <chord name="D">wretch</chord> like me
+        <comment>sing softly</comment>
+      </lines>
+    </verse>
+    <verse name="c">
+      <lines break="optional">Oh sing it out for all to hear</lines>
+      <lines>Grace is here
+        for you and me</lines>
+    </verse>
+    <verse name="v2">
+      <lines>Twas grace that taught my heart to fear<br/>And grace my fears relieved</lines>
+    </verse>
+  </lyrics>
+</song>

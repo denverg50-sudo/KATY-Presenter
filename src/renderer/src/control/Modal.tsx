@@ -1,6 +1,6 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 
-export function Modal(props: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+export function Modal(props: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean; closeDisabled?: boolean }) {
   const backdrop = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
@@ -17,7 +17,7 @@ export function Modal(props: { title: string; onClose: () => void; children: Rea
       <div className={`modal ${props.wide ? 'wide' : ''}`} role="dialog" aria-label={props.title}>
         <header>
           <h2>{props.title}</h2>
-          <button className="icon" onClick={props.onClose} aria-label="Close">
+          <button className="icon" disabled={props.closeDisabled} onClick={props.onClose} aria-label="Close">
             ✕
           </button>
         </header>

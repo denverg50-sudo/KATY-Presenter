@@ -13,6 +13,8 @@ export interface Song {
   /** Theme override; empty = use default theme */
   themeId: string
   updatedAt: number
+  /** Where the song was imported from, e.g. 'FreeShow' */
+  source?: string
 }
 
 export type BackgroundType = 'color' | 'gradient' | 'image' | 'video'
@@ -120,6 +122,25 @@ export interface UpdateInfo {
   available: boolean
 }
 
+export interface SongImportItem {
+  key: string
+  title: string
+  file: string
+  source: string
+  category: string | null
+  libraryDuplicate: boolean
+  notes: string[]
+}
+
+export interface SongImportPreview {
+  token: string
+  fileCount: number
+  truncated: boolean
+  items: SongImportItem[]
+  ignored: string[]
+  failed: { file: string; reason: string }[]
+}
+
 export interface Api {
   platform: string
   list<T>(kind: Kind): Promise<T[]>
@@ -147,6 +168,10 @@ export interface Api {
   bibleImportCommit(token: string, opts: { name: string; abbrev: string; replaceId: string | null }): Promise<BibleMeta>
   bibleUpdate(id: string, patch: { name?: string; abbrev?: string }): Promise<BibleMeta>
   bibleRemove(id: string): Promise<void>
+  /** Opens a file or folder dialog; null when cancelled */
+  songImportPick(mode: 'folder' | 'files'): Promise<SongImportPreview | null>
+  songImportCommit(token: string, keys: string[]): Promise<{ imported: number; skipped: number }>
+  songImportCancel(token: string): Promise<void>
 }
 
 export const mediaUrl = (name: string): string => `media://local/${encodeURIComponent(name)}`

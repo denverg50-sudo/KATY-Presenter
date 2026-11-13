@@ -68,6 +68,7 @@ export async function runSmoke(dir: string): Promise<void> {
     await wait(900)
     await shoot('06-scripture')
     await smokeBibleImport(js, shoot, wait)
+    await smokeSongImport(js, shoot, wait)
     const errors = await js(`window.__katyErrors || []`)
     await fs.writeFile(path.join(dir, 'errors.json'), JSON.stringify(errors, null, 2))
   } catch (e) {
@@ -123,4 +124,54 @@ async function smokeBibleImport(
   await js(`__katy.actions.openSettings(false)`)
   await wait(500)
   await shoot('08-missing-bible')
+}
+
+/** Settings → Songs → import the fixtures folder (dialog stubbed), check `Info` starts unticked (tick/untick it), import. */
+async function smokeSongImport(
+  js: (code: string) => Promise<unknown>,
+  shoot: (name: string) => Promise<void>,
+  wait: (ms: number) => Promise<void>
+): Promise<void> {
+  const folder = path.join(app.getAppPath(), 'src/main/songs/fixtures')
+  dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [folder] })) as unknown as typeof dialog.showOpenDialog
+  const before = (await js(`__katy.useStore.getState().songs.length`)) as number
+  const hasSample = `__katy.useStore.getState().songs.some((s) => s.id === 'song-amazing-grace')`
+  const hadSample = (await js(hasSample)) as boolean
+  await js(`__katy.actions.openSettings(true)`)
+  await wait(500)
+  await js(`[...document.querySelectorAll('.modal button')].find((b) => b.textContent.includes('Import songs from a folder')).click()`)
+  await wait(2500)
+  const importButton = `[...document.querySelectorAll('.modal footer button')].find((b) => /^Import \\d+ songs?$/.test(b.textContent))`
+  const countOf = async (): Promise<number> => Number(/\d+/.exec((await js(`${importButton}.textContent`)) as string)![0])
+  // `info` (announcement.show) starts unticked; tick it and untick it again to exercise the recount
+  const infoBox = `[...document.querySelectorAll('.import-categories label')].find((l) => l.textContent.startsWith('Info')).querySelector('input')`
+  if (await js(`${infoBox}.checked`)) throw new Error('info category should start unticked')
+  const expected = await countOf()
+  await js(`${infoBox}.click()`)
+  await wait(300)
+  const withInfo = await countOf()
+  if (withInfo !== expected + 1) throw new Error(`ticking info should add one song (${expected} → ${withInfo})`)
+  await js(`${infoBox}.click()`)
+  await wait(300)
+  if ((await countOf()) !== expected) throw new Error('unticking info should restore the count')
+  const summary = (await js(`document.querySelector('.import-summary').textContent`)) as string
+  if (!summary.includes('1 not imported (category unticked)')) throw new Error('missing the unticked-category line')
+  if (!/From: FreeShow \d+/.test(summary)) throw new Error('missing the From: line')
+  await js(`document.querySelectorAll('.import-summary details').forEach((d) => { d.open = true })`)
+  await wait(300)
+  await shoot('09-song-import')
+  await js(`${importButton}.click()`)
+  await wait(2000)
+  const after = (await js(`__katy.useStore.getState().songs.length`)) as number
+  // the fixtures include "Amazing Grace", which replaces the untouched sample song
+  const replaced = hadSample && !((await js(hasSample)) as boolean) ? 1 : 0
+  if (after - before !== expected - replaced) {
+    throw new Error(`expected ${expected} new songs (${replaced} replacing the sample), library grew by ${after - before}`)
+  }
+  const doneText = (await js(`document.querySelector('.import-done')?.textContent ?? ''`)) as string
+  if (!doneText.includes(`${expected} songs added`)) throw new Error(`unexpected done text: ${doneText}`)
+  await js(`[...document.querySelectorAll('.modal footer button')].find((b) => b.textContent === 'Done').click()`)
+  await wait(300)
+  await js(`__katy.actions.openSettings(false)`)
+  await wait(300)
 }

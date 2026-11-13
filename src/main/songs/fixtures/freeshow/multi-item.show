@@ -1,0 +1,64 @@
+{
+  "name": "Two Boxes",
+  "category": "songs",
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {},
+  "slides": {
+    "a": {
+      "group": "Verse",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Left box line",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Right box line",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

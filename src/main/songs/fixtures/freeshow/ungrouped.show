@@ -1,0 +1,100 @@
+{
+  "name": "Loose Slides",
+  "category": "songs",
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {},
+  "slides": {
+    "a": {
+      "group": null,
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "First loose slide",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "b": {
+      "group": "Chorus",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "A chorus here",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "c": {
+      "group": null,
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Second loose slide",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        },
+        {
+          "id": "b"
+        },
+        {
+          "id": "c"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

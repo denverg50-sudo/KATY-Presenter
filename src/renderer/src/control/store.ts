@@ -223,6 +223,12 @@ export const actions = {
     ensureService(currentService())
   },
 
+  /** Reload the song library from disk (after a song import). */
+  async reloadSongs() {
+    const songs = await api.list<Song>('songs')
+    set({ songs: songs.sort(byTitle) })
+  },
+
   // ---------- Bibles ----------
   /** Reload the installed Bibles (after import, rename or delete). Passages of changed Bibles are looked up again. */
   async refreshBibles() {

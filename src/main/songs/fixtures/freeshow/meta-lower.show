@@ -1,0 +1,53 @@
+{
+  "name": "Lower Meta",
+  "category": null,
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {
+    "ccli": "12345",
+    "artist": "Some Artist"
+  },
+  "slides": {
+    "a": {
+      "group": "Verse",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "A line of text",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

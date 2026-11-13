@@ -71,6 +71,7 @@ export function BibleSettings() {
           {bibles.map((b) => (
             <tr key={b.id}>
               <td>{b.name}</td>
+              <td className="sub">{b.verseCount.toLocaleString('en-US')} verses</td>
               <td>
                 <AbbrevInput bible={b} onCommit={(v) => rename(b, v)} />
               </td>

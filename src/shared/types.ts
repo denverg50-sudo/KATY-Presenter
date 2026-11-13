@@ -201,5 +201,7 @@ export interface ImportPreview {
   chapterCount: number
   verseCount: number
   skipped: string[]
+  /** Canonical books (in canon order) with no verses in the file */
+  missing: string[]
   replaceCandidate: BibleMeta | null
 }

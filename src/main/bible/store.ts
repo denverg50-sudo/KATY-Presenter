@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto'
 import { gunzip } from 'zlib'
 import { promisify } from 'util'
 import { writeAtomic } from '../storage'
+import { bookName } from '../../shared/books'
 import { parseReference, getPassage, searchBible } from '../../shared/scripture'
 import type { Bible, BibleMeta, ImportPreview, Passage, PassageVerse } from '../../shared/types'
 import type { ParsedBible } from './parse-xml'
@@ -209,6 +210,9 @@ export class BibleStore {
       chapterCount: parsed.books.reduce((n, b) => n + b.chapters.filter((c) => c.some(Boolean)).length, 0),
       verseCount: probe.verseCount,
       skipped: parsed.skipped,
+      missing: Array.from({ length: 66 }, (_, i) => i + 1)
+        .filter((n) => !parsed.books.some((b) => b.num === n && b.chapters.some((c) => c.some(Boolean))))
+        .map(bookName),
       replaceCandidate: existing
     }
   }

@@ -16,7 +16,8 @@ export function ImportBibleDialog(props: { preview: ImportPreview; onClose: () =
   const [replace, setReplace] = useState(!!p.replaceCandidate)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const missing = p.bookCount < 66
+  const missing = p.missing.length > 0
+  const missingText = p.missing.slice(0, 10).join(', ') + (p.missing.length > 10 ? ` and ${p.missing.length - 10} more` : '')
 
   const cancel = (): void => {
     if (busy) return
@@ -71,7 +72,7 @@ export function ImportBibleDialog(props: { preview: ImportPreview; onClose: () =
           {p.verseCount.toLocaleString('en-US')} verses
         </p>
         {p.skipped.length > 0 && <p className="hint">Skipped: {p.skipped.join(', ')}</p>}
-        {missing && <p className="form-warn">Some books are missing: this file has {p.bookCount} of 66 books.</p>}
+        {missing && <p className="form-warn">Some books are missing: {missingText}</p>}
         {p.replaceCandidate && (
           <div className="radio-col">
             <label className="inline">

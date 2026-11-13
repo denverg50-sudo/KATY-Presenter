@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, net, protocol, screen, shell } fro
 import path from 'path'
 import { pathToFileURL } from 'url'
 import { Storage } from './storage'
+import { BibleStore } from './bible/store'
 import {
   applyOutput,
   broadcast,
@@ -31,6 +32,8 @@ app.on('second-instance', () => {
 
 const smokeDir = smokeSetup()
 const storage = new Storage(path.join(app.getPath('userData'), 'library'))
+// Built-in Bibles ship in resources/ (asar-unpacked); Task 7 wires this store to IPC.
+export const bibleStore = new BibleStore(path.join(app.getPath('userData'), 'library'), path.join(__dirname, '../../resources/bibles'))
 
 const MEDIA_FILTERS = [
   { name: 'Images & videos', extensions: ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'webm', 'mov', 'm4v'] }

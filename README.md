@@ -54,6 +54,10 @@ providing another implementation of that interface.
 Visual smoke test (dev only): `KATY_SMOKE=/tmp/katy-smoke npm run dev` drives the UI with a throwaway
 library and saves screenshots of both windows to that folder.
 
+## Built-in Bibles
+
+The KJV, ASV, WEB and BSB (all public domain) live in `resources/bibles/*.json.gz`. Regenerate them from `seven1m/open-bibles` with `npm run bibles` (optionally `-- --cache <dir>` to reuse downloaded sources).
+
 ## Roadmap
 
 1. Bible verses: bundle public-domain KJV / WEB / BSB (OSIS, USFX, Zefania formats from `seven1m/open-bibles`).

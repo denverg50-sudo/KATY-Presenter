@@ -181,20 +181,24 @@ export function parseSongSelectUsr(text: string, file: string): ImportedSong {
   const words = (v.words ?? '').split('/t')
   const sections: RawSection[] = []
   let withoutWords = 0
-  names.forEach((n, i) => {
+  // words beyond the Fields list have no label but are still lyrics
+  const extra = words.slice(names.length).filter((w) => w.replace(/\/n/g, '').trim()).length
+  const labels: string[] = [...names, ...words.slice(names.length).map(() => '')]
+  labels.forEach((n, i) => {
     const b = new SlideBuilder()
     for (const l of (words[i] ?? '').replace(/\/n/g, '\n').split('\n')) {
       if (l.trim()) b.line(l.trim())
       else b.split()
     }
     const slides = b.done()
-    if (!slides.length) withoutWords++
+    if (!slides.length && i < names.length) withoutWords++
     sections.push({ name: n || null, slides })
   })
   if (!sections.some((s) => s.slides.length)) throw new Error('No lyrics found in this SongSelect song')
   const assembled = assembleSong(sections, [])
   const notes = [...assembled.notes]
   if (withoutWords) notes.push(`${withoutWords} field${withoutWords === 1 ? '' : 's'} without words left out`)
+  if (extra) notes.push(`${extra} extra lyric block${extra === 1 ? '' : 's'} without a label kept`)
   const people = (s: string | undefined): string =>
     (s ?? '').split('|').map((p) => p.trim()).filter(Boolean).join(', ')
   return {

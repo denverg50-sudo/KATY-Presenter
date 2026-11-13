@@ -68,6 +68,11 @@ describe('parseSongSelectUsr', () => {
     expect(s.arrangement).toBe('')
     expect(s.notes).toEqual([])
   })
+  it('keeps words beyond the Fields list as unlabelled sections, with a note', () => {
+    const r = parseSongSelectUsr('[File]\n[S A1]\nTitle=T\nFields=Verse 1\nWords=one/ttwo/n/nthree/tfour/t\n', 'a.usr')
+    expect(r.lyrics).toBe('[Verse 1]\none\n\n[Slide 1]\ntwo\n\nthree\n\n[Slide 2]\nfour')
+    expect(r.notes).toEqual(['2 extra lyric blocks without a label kept'])
+  })
   it('throws when there are no words', () => {
     expect(() => parseSongSelectUsr('[File]\n[S A1]\nTitle=T\nFields=Verse 1\nWords=\n', 'a.usr')).toThrow(
       'No lyrics found in this SongSelect song'

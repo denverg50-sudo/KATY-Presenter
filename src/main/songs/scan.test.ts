@@ -62,6 +62,18 @@ describe('parseSongFiles', () => {
     expect(r.fileCount).toBe(9)
     expect(r.truncated).toBe(false)
   })
+  it('lists picked files of unsupported kinds as ignored and counts them', async () => {
+    await fs.writeFile(path.join(dir, 'photo.png'), 'x')
+    await fs.writeFile(path.join(dir, 'notes.docx'), 'x')
+    const r = await parseSongFiles([path.join(dir, 'song.cho'), path.join(dir, 'photo.png'), path.join(dir, 'notes.docx')])
+    expect(r.songs.map((s) => s.file)).toEqual(['song.cho'])
+    expect(r.ignored).toEqual(['photo.png', 'notes.docx'])
+    expect(r.fileCount).toBe(3)
+    // inside a picked folder, unsupported files stay out of the count and the list
+    const f = await parseSongFiles([dir])
+    expect(f.ignored).not.toContain('photo.png')
+    expect(f.fileCount).toBe(9)
+  })
   it('uses the base name for a picked file', async () => {
     const r = await parseSongFiles([path.join(dir, 'song.cho')])
     expect(r.songs[0].file).toBe('song.cho')

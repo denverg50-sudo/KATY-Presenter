@@ -30,9 +30,13 @@ interface Found {
 const hidden = (name: string): boolean => name.startsWith('.') || name === 'node_modules'
 const isSongName = (name: string): boolean => !name.startsWith('.') && SONG_EXTENSIONS.includes(path.extname(name).toLowerCase())
 
-async function walk(paths: string[], cap: number): Promise<{ found: Found[]; truncated: boolean }> {
+async function walk(
+  paths: string[],
+  cap: number
+): Promise<{ found: Found[]; truncated: boolean; unsupported: string[] }> {
   const seen = new Set<string>()
   const found: Found[] = []
+  const unsupported: string[] = []
   let truncated = false
 
   const add = (abs: string, rel: string): boolean => {
@@ -77,12 +81,17 @@ async function walk(paths: string[], cap: number): Promise<{ found: Found[]; tru
     }
     if (st.isDirectory()) {
       if (!(await visit(p, ''))) break
-    } else if (st.isFile() && isSongName(path.basename(p))) {
-      if (!add(p, path.basename(p))) break
+    } else if (st.isFile()) {
+      if (isSongName(path.basename(p))) {
+        if (!add(p, path.basename(p))) break
+      } else if (!seen.has(p)) {
+        seen.add(p) // a picked file of a kind we don't read: show it as ignored
+        unsupported.push(path.basename(p))
+      }
     }
   }
   found.sort((a, b) => (a.abs < b.abs ? -1 : a.abs > b.abs ? 1 : 0))
-  return { found, truncated }
+  return { found, truncated, unsupported }
 }
 
 /** Expand folders recursively, keep song-like extensions, skip hidden entries and symlinks, de-duplicate and sort. */
@@ -98,8 +107,14 @@ const firstLine = (e: unknown): string => {
 
 /** Read, detect and parse every song file. Per-file problems never throw. */
 export async function parseSongFiles(paths: string[]): Promise<ParseResult> {
-  const { found, truncated } = await walk(paths, 5000)
-  const result: ParseResult = { songs: [], ignored: [], failed: [], fileCount: found.length, truncated }
+  const { found, truncated, unsupported } = await walk(paths, 5000)
+  const result: ParseResult = {
+    songs: [],
+    ignored: [...unsupported],
+    failed: [],
+    fileCount: found.length + unsupported.length,
+    truncated
+  }
 
   for (const { abs, rel } of found) {
     const isShow = path.extname(abs).toLowerCase() === '.show'

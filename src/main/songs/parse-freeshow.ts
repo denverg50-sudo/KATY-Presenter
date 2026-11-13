@@ -37,8 +37,11 @@ function decodeEntities(s: string): string {
     .replace(/&amp;/gi, '&')
 }
 
+/** Formatting tags FreeShow may put in text; anything else in <angle brackets> is kept as written. */
+const FORMAT_TAG = /<\/?(?:span|b|i|u|em|strong|font|p|div|sup|sub)(?:\s[^<>]*)?\/?>/gi
+
 function cleanValue(s: string): string {
-  return decodeEntities(s.replace(/<br\s*\/?>/gi, '\n').replace(/<[^>]*>/g, ''))
+  return decodeEntities(s.replace(/<br\s*\/?>/gi, '\n').replace(FORMAT_TAG, ''))
 }
 
 function groupName(slide: Obj): string | null {
@@ -47,7 +50,18 @@ function groupName(slide: Obj): string | null {
   return g.charAt(0).toUpperCase() + g.slice(1)
 }
 
-export function parseFreeShow(json: string, file: string): ImportedSong {
+/** The sections and play order a show is read into, before labelling. For tests. */
+export function readFreeShowSections(json: string, file: string): { sections: RawSection[]; order: number[] } {
+  const out = { sections: [] as RawSection[], order: [] as number[] }
+  parseFreeShow(json, file, out)
+  return out
+}
+
+export function parseFreeShow(
+  json: string,
+  file: string,
+  capture?: { sections: RawSection[]; order: number[] }
+): ImportedSong {
   let data: unknown
   try {
     data = JSON.parse(json)
@@ -207,10 +221,14 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
   }
 
   const meta = isObj(show.meta) ? show.meta : {}
-  const title = str(meta.title) || str(show.name) || file.replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '')
+  const title = str(show.name) || str(meta.title) || file.replace(/^.*[\\/]/, '').replace(/\.[^.]*$/, '')
   const hasText = sections.some((s) => s.slides.some((t) => t.trim()))
   if (!hasText) throw new Error('No lyrics found in this FreeShow show')
 
+  if (capture) {
+    capture.sections = sections
+    capture.order = order
+  }
   const assembled = assembleSong(sections, order)
 
   if (activeMissing) notes.add(`Active layout not found; used "${layoutName}"`)

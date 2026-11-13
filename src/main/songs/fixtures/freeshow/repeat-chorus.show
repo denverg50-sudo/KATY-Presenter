@@ -1,5 +1,5 @@
 {
-  "name": "amazing-grace-file",
+  "name": "Amazing Grace",
   "category": "songs",
   "settings": {
     "activeLayout": "main",
@@ -11,7 +11,7 @@
     "used": null
   },
   "meta": {
-    "title": "Amazing Grace",
+    "title": "Amazing Grace (metadata title)",
     "author": "John Newton",
     "CCLI": "22025",
     "copyright": "Public Domain"

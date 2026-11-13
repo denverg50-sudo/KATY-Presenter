@@ -1,8 +1,8 @@
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildSlides } from '@shared/lyrics'
-import { looksLikeFreeShow, parseFreeShow } from './parse-freeshow'
+import { looksLikeFreeShow, parseFreeShow, readFreeShowSections } from './parse-freeshow'
 
 const dir = join(__dirname, 'fixtures', 'freeshow')
 const load = (n: string): string => readFileSync(join(dir, n), 'utf8')
@@ -107,10 +107,36 @@ describe('parseFreeShow tolerance', () => {
     expect(s.lyrics).toBe('[Verse]\nyes')
   })
 
-  it('uses globalGroup when group is empty, and the title falls back to name', () => {
+  it('uses globalGroup when group is empty', () => {
     const s = parseFreeShow(mk({ a: { group: '', globalGroup: 'chorus', items: txt('x') } }, [{ id: 'a' }]), 'f')
     expect(s.lyrics).toBe('[Chorus]\nx')
     expect(s.title).toBe('T')
+  })
+
+  it('takes the title from name, then meta.title, then the file name', () => {
+    const slides = { a: { group: 'Verse', items: txt('x') } }
+    expect(parseFreeShow(mk(slides, [{ id: 'a' }], { meta: { title: 'Meta' } }), 'f').title).toBe('T')
+    expect(parseFreeShow(mk(slides, [{ id: 'a' }], { name: '', meta: { title: 'Meta' } }), 'f').title).toBe('Meta')
+    expect(parseFreeShow(mk(slides, [{ id: 'a' }], { name: '  ' }), 'dir/My Song.show').title).toBe('My Song')
+  })
+
+  it('strips only known formatting tags and keeps other angle-bracket text', () => {
+    const s = parseFreeShow(
+      mk(
+        {
+          a: {
+            group: 'Verse',
+            items: txt(
+              '<span style="color: red">Praise</span> the <Lord><br><b>bold</b> <I>it</I> <u>u</u> <em>e</em> <strong>s</strong>',
+              '<font face="x">f</font><p>p</p><div class="d">d</div>x<sup>2</sup>y<sub>3</sub><span/> <a>keep</a>'
+            )
+          }
+        },
+        [{ id: 'a' }]
+      ),
+      'f'
+    )
+    expect(s.lyrics).toBe('[Verse]\nPraise the <Lord>\nbold it u e sfpdx2y3 <a>keep</a>')
   })
 
   it('skips disabled layout entries and disabled children, with notes', () => {
@@ -185,6 +211,34 @@ describe('parseFreeShow tolerance', () => {
       'Show has 2 layouts; used "Short"'
     ])
   })
+})
+
+describe('FreeShow fixtures round-trip', () => {
+  const THROWS = new Set(['empty.show'])
+  const clean = (t: string): string =>
+    t
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean)
+      .join('\n')
+  const files = readdirSync(dir).filter((f) => f.endsWith('.show') && !THROWS.has(f))
+  it('covers the fixtures', () => {
+    expect(files.length).toBeGreaterThanOrEqual(8)
+  })
+  for (const f of files) {
+    it(`${f}: buildSlides gives the parsed play-order slides`, () => {
+      const s = parse(f)
+      const { sections, order } = readFreeShowSections(load(f), f)
+      const slidesOf = (i: number): string[] => sections[i].slides.map(clean).filter(Boolean)
+      const valid = (i: number): boolean => slidesOf(i).length > 0
+      let play = order.filter(valid)
+      if (!play.length) play = sections.map((_, i) => i).filter(valid)
+      const expected = play.flatMap(slidesOf)
+      const got = buildSlides(s.lyrics, s.arrangement).map((x) => x.text)
+      expect(got.length).toBeGreaterThan(0)
+      expect(got).toEqual(expected)
+    })
+  }
 })
 
 describe('looksLikeFreeShow', () => {

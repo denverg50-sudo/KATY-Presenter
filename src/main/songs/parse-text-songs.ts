@@ -235,6 +235,25 @@ export function parsePlainText(text: string, file: string): ImportedSong {
   // the footer is a trailing run of footer-like lines (blank lines allowed)
   let start = lines.length
   while (start > 0 && (!lines[start - 1] || FOOTER.test(lines[start - 1]))) start--
+  // a strong SongSelect marker makes everything from the footer's first ©/CCLI line the footer
+  const MARK = /^(©|\(c\)\s|ccli\s+(song|license)\s*#|for use solely with)/i
+  const STRONG = /^(ccli\s+(song|license)\s*#|for use solely with the songselect)/i
+  const paras: { from: number; to: number }[] = []
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i]) continue
+    const last = paras[paras.length - 1]
+    if (last && last.to === i - 1) last.to = i
+    else paras.push({ from: i, to: i })
+  }
+  const has = (p: { from: number; to: number }, re: RegExp): boolean =>
+    lines.slice(p.from, p.to + 1).some((l) => re.test(l))
+  let pi = paras.length - 1
+  while (pi >= 0 && !has(paras[pi], STRONG)) pi--
+  if (pi >= 0) {
+    while (pi > 0 && has(paras[pi - 1], MARK)) pi--
+    const first = lines.findIndex((l, i) => i >= paras[pi].from && MARK.test(l))
+    if (first >= 0) start = Math.min(start, first)
+  }
   const footer = lines.slice(start).filter(Boolean)
   if (footer.length) {
     lines = lines.slice(0, start)

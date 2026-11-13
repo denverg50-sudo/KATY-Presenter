@@ -115,6 +115,12 @@ describe('parsePlainText', () => {
     const s = parsePlainText('T\n\nVerse 1\nWords: of life\nAnd more\n\nChorus\nSing\n', 't.txt')
     expect(s.lyrics).toBe('[Verse 1]\nWords: of life\nAnd more\n\n[Chorus]\nSing')
   })
+  it('strips a SongSelect footer that has unrecognised lines', () => {
+    const s = parsePlainText('T\n\nVerse 1\nOne\n\n© 2000 X\nCCLI Song # 123\nAdministered by Y', 't.txt')
+    expect(s.lyrics).toBe('[Verse 1]\nOne')
+    expect(s.ccli).toBe('123')
+    expect(s.copyright).toBe('2000 X')
+  })
   it('recognises bracketed labels', () => {
     const s = parsePlainText('T\n\n[Verse 1]\nA line\n\n[CHORUS]\nB line\n', 't.txt')
     expect(s.lyrics).toBe('[Verse 1]\nA line\n\n[Chorus]\nB line')

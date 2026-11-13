@@ -1,0 +1,50 @@
+{
+  "name": "Nothing",
+  "category": "songs",
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {},
+  "slides": {
+    "a": {
+      "group": "Verse",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

@@ -1,0 +1,50 @@
+{
+  "name": "Welcome Notice",
+  "category": "info",
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {},
+  "slides": {
+    "a": {
+      "group": null,
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Welcome to church",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "a"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

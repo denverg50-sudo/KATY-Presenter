@@ -1,0 +1,151 @@
+{
+  "name": "amazing-grace-file",
+  "category": "songs",
+  "settings": {
+    "activeLayout": "main",
+    "template": null
+  },
+  "timestamps": {
+    "created": 1,
+    "modified": 2,
+    "used": null
+  },
+  "meta": {
+    "title": "Amazing Grace",
+    "author": "John Newton",
+    "CCLI": "22025",
+    "copyright": "Public Domain"
+  },
+  "slides": {
+    "v1": {
+      "group": "Verse",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Amazing grace how sweet the sound",
+                  "style": ""
+                }
+              ]
+            },
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "That saved a wretch like me",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "c1": {
+      "group": "Chorus",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Oh sing it out for all to hear",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ],
+      "children": [
+        "c1b"
+      ]
+    },
+    "c1b": {
+      "group": null,
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Grace is here for you and me",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    "v2": {
+      "group": "Verse",
+      "color": null,
+      "settings": {},
+      "notes": "",
+      "items": [
+        {
+          "style": "top:0",
+          "lines": [
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "Twas grace that taught my heart to fear",
+                  "style": ""
+                }
+              ]
+            },
+            {
+              "align": "",
+              "text": [
+                {
+                  "value": "And grace my fears relieved",
+                  "style": ""
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "layouts": {
+    "main": {
+      "name": "Default",
+      "notes": "",
+      "slides": [
+        {
+          "id": "v1"
+        },
+        {
+          "id": "c1"
+        },
+        {
+          "id": "v2"
+        },
+        {
+          "id": "c1"
+        }
+      ]
+    }
+  },
+  "media": {}
+}

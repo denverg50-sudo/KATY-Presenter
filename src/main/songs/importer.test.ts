@@ -95,4 +95,14 @@ describe('SongImporter', () => {
     await imp.prepare(['/x'])
     await expect(imp.commit(p2.token, ['0'])).rejects.toThrow(EXPIRED)
   })
+
+  it('rejects a concurrent commit on the same token without duplicating songs', async () => {
+    const imp = new SongImporter(storage, async () => result([song('A1'), song('B2')]))
+    const p = await imp.prepare(['/x'])
+    const r = await Promise.allSettled([imp.commit(p.token, ['0', '1']), imp.commit(p.token, ['0', '1'])])
+    expect(r.map((x) => x.status).sort()).toEqual(['fulfilled', 'rejected'])
+    const rej = r.find((x) => x.status === 'rejected') as PromiseRejectedResult
+    expect(rej.reason.message).toBe('An import is already in progress.')
+    expect((await storage.list<Song>('songs')).filter((s) => s.title === 'A1')).toHaveLength(1)
+  })
 })

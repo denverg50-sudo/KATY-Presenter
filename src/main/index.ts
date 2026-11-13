@@ -134,8 +134,16 @@ function registerIpc(): void {
     if (r.canceled || r.filePaths.length === 0) return null
     return songImporter.prepare(r.filePaths)
   })
-  ipcMain.handle('song:import-commit', (_e, token: string, keys: string[]) => songImporter.commit(token, keys))
-  ipcMain.handle('song:import-cancel', (_e, token: string) => songImporter.cancel(token))
+  ipcMain.handle('song:import-commit', (_e, token: unknown, keys: unknown) => {
+    if (typeof token !== 'string' || !Array.isArray(keys) || !keys.every((k) => typeof k === 'string')) {
+      throw new Error('Invalid import request')
+    }
+    return songImporter.commit(token, keys)
+  })
+  ipcMain.handle('song:import-cancel', (_e, token: unknown) => {
+    if (typeof token !== 'string') throw new Error('Invalid import request')
+    songImporter.cancel(token)
+  })
   ipcMain.handle('bible:update', (_e, id: string, patch: { name?: string; abbrev?: string }) => bibleStore.update(id, patch))
   ipcMain.handle('bible:remove', (_e, id: string) => bibleStore.remove(id))
 

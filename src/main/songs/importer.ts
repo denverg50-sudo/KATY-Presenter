@@ -7,7 +7,7 @@ import type { ParseResult } from './scan'
 const EXPIRED = 'This import has expired or was cancelled. Please choose the files again.'
 
 export class SongImporter {
-  private pending: { token: string; songs: Map<string, ImportedSong> } | null = null // only the latest batch is kept
+  private pending: { token: string; songs: Map<string, ImportedSong>; committing: boolean } | null = null // only the latest batch is kept
 
   constructor(
     private storage: Storage,
@@ -32,7 +32,7 @@ export class SongImporter {
         notes: s.notes
       }
     })
-    this.pending = { token, songs }
+    this.pending = { token, songs, committing: false }
     return {
       token,
       fileCount: result.fileCount,
@@ -44,8 +44,22 @@ export class SongImporter {
   }
 
   async commit(token: string, keys: string[]): Promise<{ imported: number; skipped: number }> {
-    if (!this.pending || this.pending.token !== token) throw new Error(EXPIRED)
-    const { songs } = this.pending
+    const batch = this.pending
+    if (!batch || batch.token !== token) throw new Error(EXPIRED)
+    if (batch.committing) throw new Error('An import is already in progress.')
+    batch.committing = true // claimed synchronously, before any await
+    try {
+      return await this.doCommit(batch, keys)
+    } finally {
+      batch.committing = false
+    }
+  }
+
+  private async doCommit(
+    batch: { songs: Map<string, ImportedSong> },
+    keys: string[]
+  ): Promise<{ imported: number; skipped: number }> {
+    const { songs } = batch
     const seen = new Set((await this.storage.list<Song>('songs')).map((s) => normalizeTitle(s.title)))
     const toWrite: Song[] = []
     let skipped = 0
@@ -81,7 +95,7 @@ export class SongImporter {
       for (const id of written) await this.storage.remove('songs', id).catch(() => {})
       throw new Error(`Import failed — nothing was added: ${e instanceof Error ? e.message : String(e)}`)
     }
-    this.pending = null
+    if (this.pending === batch) this.pending = null
     return { imported: toWrite.length, skipped }
   }
 

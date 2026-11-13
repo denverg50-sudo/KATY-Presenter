@@ -1,6 +1,7 @@
 import { SaxesParser } from 'saxes'
 import { findBook } from '@shared/books'
 import type { BibleBook } from '@shared/types'
+import { buildBooks } from './builder'
 
 export interface ParsedBible {
   name: string
@@ -227,21 +228,7 @@ export function parseXmlBible(xml: string, format: XmlBibleFormat, fileName: str
   parser.write(xml).close()
   endVerse()
 
-  const out: BibleBook[] = []
-  for (const [n, chs] of [...books.entries()].sort((x, y) => x[0] - y[0])) {
-    const chapters: string[][] = []
-    for (let i = 0; i < chs.length; i++) {
-      const ch = chs[i]
-      if (!ch) {
-        chapters.push([])
-        continue
-      }
-      const verses: string[] = []
-      for (let j = 0; j < ch.length; j++) verses.push(ch[j] ?? '')
-      chapters.push(verses)
-    }
-    out.push({ num: n, chapters })
-  }
+  const out = buildBooks(books)
 
   const base = baseName(fileName)
   const abbrev = ident && ident.length <= 12 && !/\s/.test(ident) ? ident : base.toUpperCase().slice(0, 12)

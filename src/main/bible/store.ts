@@ -163,6 +163,14 @@ export class BibleStore {
     this.inflight.delete(id)
   }
 
+  /** Drop all in-memory state (e.g. after a backup restore replaced the files on disk) */
+  reset(): void {
+    this.cache.clear()
+    this.builtInMeta.clear()
+    this.inflight.clear()
+    this.pending = null
+  }
+
   cancelImport(token: string): void {
     if (this.pending?.token === token) this.pending = null
   }

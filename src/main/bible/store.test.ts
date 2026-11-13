@@ -155,6 +155,16 @@ describe('BibleStore', () => {
   })
 })
 
+describe('reset', () => {
+  it('clears pending import and caches', async () => {
+    const p = await prep()
+    expect((await store.list()).length).toBeGreaterThan(0)
+    store.reset()
+    await expect(store.commitImport(p.token, { name: 'x', abbrev: 'x', replaceId: null })).rejects.toThrow(/expired/)
+    expect('error' in (await store.passage('kjv', 'John 3:1'))).toBe(false)
+  })
+})
+
 describe('shipped built-ins', () => {
   it('serves John 3:16 from the real KJV', async () => {
     const real = new BibleStore(mkdtempSync(path.join(tmpdir(), 'bible-')), path.join(__dirname, '../../../resources/bibles'))

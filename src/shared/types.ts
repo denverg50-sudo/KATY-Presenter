@@ -78,6 +78,11 @@ export interface Settings {
   transitionMs: number
   /** GitHub "owner/repo" checked for new releases; empty disables update checks */
   updateRepo: string
+  /** Theme used for scripture slides; empty = default theme */
+  scriptureThemeId: string
+  defaultBibleId: string
+  defaultVersesPerSlide: number
+  showVerseNumbers: boolean
 }
 
 /** Everything the audience screen needs to draw a frame */
@@ -123,6 +128,15 @@ export interface Api {
   importBackup(): Promise<boolean>
   checkUpdate(): Promise<UpdateInfo | null>
   openExternal(url: string): void
+  listBibles(): Promise<BibleMeta[]>
+  biblePassage(bibleId: string, ref: string): Promise<Passage | { error: string }>
+  bibleSearch(bibleId: string, q: string): Promise<PassageVerse[]>
+  /** Opens a file dialog; null when cancelled */
+  bibleImportPick(): Promise<ImportPreview | { error: string } | null>
+  bibleImportCancel(token: string): Promise<void>
+  bibleImportCommit(token: string, opts: { name: string; abbrev: string; replaceId: string | null }): Promise<BibleMeta>
+  bibleUpdate(id: string, patch: { name?: string; abbrev?: string }): Promise<BibleMeta>
+  bibleRemove(id: string): Promise<void>
 }
 
 export const mediaUrl = (name: string): string => `media://local/${encodeURIComponent(name)}`

@@ -134,6 +134,10 @@ export function defaultSettings(): Settings {
     defaultThemeId: DEFAULT_THEME_ID,
     logoMedia: '',
     transitionMs: 400,
-    updateRepo: 'denverg50-sudo/KATY-Presenter'
+    updateRepo: 'denverg50-sudo/KATY-Presenter',
+    scriptureThemeId: '',
+    defaultBibleId: 'kjv',
+    defaultVersesPerSlide: 1,
+    showVerseNumbers: true
   }
 }

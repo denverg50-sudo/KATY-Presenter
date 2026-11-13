@@ -88,8 +88,32 @@ function registerIpc(): void {
     })
     if (r.canceled || !r.filePaths[0]) return false
     await storage.importZip(r.filePaths[0])
+    bibleStore.reset()
     return true
   })
+
+  ipcMain.handle('bible:list', () => bibleStore.list())
+  ipcMain.handle('bible:passage', (_e, id: string, ref: string) => bibleStore.passage(id, ref))
+  ipcMain.handle('bible:search', (_e, id: string, q: string) => bibleStore.search(id, q))
+  ipcMain.handle('bible:import-pick', async (e) => {
+    const win = BrowserWindow.fromWebContents(e.sender)!
+    const r = await dialog.showOpenDialog(win, {
+      title: 'Import Bible',
+      properties: ['openFile', 'multiSelections'],
+      filters: [
+        { name: 'Bible files', extensions: ['xml', 'xmm', 'zefania', 'osis', 'usfx', 'sqlite', 'csv'] },
+        { name: 'All files', extensions: ['*'] }
+      ]
+    })
+    if (r.canceled || r.filePaths.length === 0) return null
+    return bibleStore.prepareImport(r.filePaths)
+  })
+  ipcMain.handle('bible:import-cancel', (_e, token: string) => bibleStore.cancelImport(token))
+  ipcMain.handle('bible:import-commit', (_e, token: string, opts: { name: string; abbrev: string; replaceId: string | null }) =>
+    bibleStore.commitImport(token, opts)
+  )
+  ipcMain.handle('bible:update', (_e, id: string, patch: { name?: string; abbrev?: string }) => bibleStore.update(id, patch))
+  ipcMain.handle('bible:remove', (_e, id: string) => bibleStore.remove(id))
 
   ipcMain.handle('update:check', async () => checkForUpdate((await storage.getSettings()).updateRepo))
   ipcMain.on('open-external', (_e, url: string) => {

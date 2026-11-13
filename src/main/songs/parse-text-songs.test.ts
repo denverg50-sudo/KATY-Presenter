@@ -46,6 +46,10 @@ describe('parseChordPro', () => {
     expect(s.notes).toEqual([expect.stringMatching(/tab/i)])
     expect(buildSlides(s.lyrics, s.arrangement)).toHaveLength(6)
   })
+  it('reads label attributes', () => {
+    const t = '{sov label="Verse 1"}\nA\n{eov}\n{start_of_chorus label=\'Hook\'}\nB\n{eoc}'
+    expect(parseChordPro(t, 'a.cho').lyrics).toBe('[Verse 1]\nA\n\n[Hook]\nB')
+  })
   it('falls back to the file name and throws when empty', () => {
     expect(parseChordPro('{sov}\nHello\n{eov}', 'x/My Song.cho').title).toBe('My Song')
     expect(() => parseChordPro('{title: T}\n', 'a.cho')).toThrow('No lyrics found in this ChordPro song')
@@ -95,6 +99,26 @@ describe('parsePlainText', () => {
     const s = parsePlainText('T\n\nVERSE 1:\nA line\n\nChorus 1\nB line\n\nverse 2\nC line\n\nCHORUS 1:\nB line\n', 't.txt')
     expect(s.lyrics).toBe('[Verse 1]\nA line\n\n[Chorus 1]\nB line\n\n[Verse 2]\nC line')
     expect(s.arrangement).toBe('V1 C1 V2 C1')
+  })
+  it('keeps a first lyric line when it is not a title', () => {
+    const s = parsePlainText('Line A\nLine B\n\nLine C', 'My Song.txt')
+    expect(s.title).toBe('My Song')
+    expect(s.lyrics).toBe('[Slide 1]\nLine A\nLine B\n\nLine C')
+  })
+  it('keeps a final lyric line when the footer has no CCLI song number', () => {
+    const s = parsePlainText('T\n\nVerse 1\nOne\n\nHallelujah\n\n© 2000 Someone', 't.txt')
+    expect(s.lyrics).toBe('[Verse 1]\nOne\n\nHallelujah')
+    expect(s.author).toBe('')
+    expect(s.copyright).toBe('2000 Someone')
+  })
+  it('keeps footer-like lines that are inside the lyrics', () => {
+    const s = parsePlainText('T\n\nVerse 1\nWords: of life\nAnd more\n\nChorus\nSing\n', 't.txt')
+    expect(s.lyrics).toBe('[Verse 1]\nWords: of life\nAnd more\n\n[Chorus]\nSing')
+  })
+  it('recognises bracketed labels', () => {
+    const s = parsePlainText('T\n\n[Verse 1]\nA line\n\n[CHORUS]\nB line\n', 't.txt')
+    expect(s.lyrics).toBe('[Verse 1]\nA line\n\n[Chorus]\nB line')
+    expect(s.notes).toEqual([])
   })
   it('throws when there are no lyrics', () => {
     expect(() => parsePlainText('Only a title\n', 'x.txt')).toThrow('No lyrics found in this text song')

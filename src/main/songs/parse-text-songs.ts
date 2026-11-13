@@ -43,7 +43,7 @@ const KNOWN_LABEL =
 
 /** Normalised section label for a known label like "CHORUS:" or "Verse 2"; null if not a label. */
 function knownLabel(text: string): string | null {
-  const m = text.trim().match(KNOWN_LABEL)
+  const m = text.trim().replace(/^\[(.*)\]$/, '$1').trim().match(KNOWN_LABEL)
   if (!m) return null
   const w = m[1].toLowerCase().replace(/\s+/g, '')
   const name = /^pre-?chorus$/.test(w) ? 'Pre-Chorus' : w.charAt(0).toUpperCase() + w.slice(1)
@@ -109,7 +109,10 @@ export function parseChordPro(text: string, file: string): ImportedSong {
       else if (name === 'artist' || name === 'subtitle' || name === 'st') meta.author ??= arg
       else if (name === 'ccli') meta.ccli ??= arg
       else if (name === 'copyright') meta.copyright ??= arg
-      else if (name in START) begin(arg || START[name], START[name] === 'Chorus')
+      else if (name in START) {
+        const attr = arg.match(/\blabel\s*=\s*(?:"([^"]*)"|'([^']*)')/i)
+        begin((attr ? attr[1] ?? attr[2] : arg) || START[name], START[name] === 'Chorus')
+      }
       else if (END.has(name)) {
         close()
         pending = null
@@ -217,25 +220,38 @@ export function parsePlainText(text: string, file: string): ImportedSong {
   const all = text.split('\n').map((l) => l.trim())
   let t = 0
   while (t < all.length && !all[t]) t++
-  const hasTitle = t < all.length && !knownLabel(all[t]) && !FOOTER.test(all[t])
+  const next = all[t + 1]
+  const hasTitle =
+    t < all.length &&
+    !knownLabel(all[t]) &&
+    !FOOTER.test(all[t]) &&
+    (next === undefined || next === '' || knownLabel(next) !== null)
   const title = hasTitle ? all[t] : ''
   let lines = all.slice(hasTitle ? t + 1 : t)
 
   let ccli = ''
   let copyright = ''
   let author = ''
-  const footerAt = lines.findIndex((l) => FOOTER.test(l))
-  if (footerAt >= 0) {
-    const footer = lines.slice(footerAt).filter(Boolean)
-    lines = lines.slice(0, footerAt)
+  // the footer is a trailing run of footer-like lines (blank lines allowed)
+  let start = lines.length
+  while (start > 0 && (!lines[start - 1] || FOOTER.test(lines[start - 1]))) start--
+  const footer = lines.slice(start).filter(Boolean)
+  if (footer.length) {
+    lines = lines.slice(0, start)
+    let hasCcli = false
+    let hasCopy = false
     for (const f of footer) {
       const c = f.match(/^ccli\s+song\s*#\s*(\d+)/i)
-      if (c) ccli ||= c[1]
-      else if (/^(©|\(c\)\s)/i.test(f)) copyright ||= f.replace(/^(©|\(c\))\s*/i, '').trim()
-      else if (/^words(\s+and\s+music)?\s*:/i.test(f)) author ||= f.replace(/^[^:]*:\s*/, '').trim()
+      if (c) {
+        hasCcli = true
+        ccli ||= c[1]
+      } else if (/^(©|\(c\)\s)/i.test(f)) {
+        hasCopy = true
+        copyright ||= f.replace(/^(©|\(c\))\s*/i, '').trim()
+      } else if (/^words(\s+and\s+music)?\s*:/i.test(f)) author ||= f.replace(/^[^:]*:\s*/, '').trim()
     }
     // an author line sits by itself just before the © line
-    if (footer.some((f) => /^(©|\(c\)\s)/i.test(f))) {
+    if (hasCopy && hasCcli) {
       let i = lines.length - 1
       while (i >= 0 && !lines[i]) i--
       if (i > 0 && !knownLabel(lines[i]) && !lines[i - 1] && lines.slice(0, i).some(Boolean)) {

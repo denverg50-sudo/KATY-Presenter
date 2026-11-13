@@ -119,3 +119,10 @@ export function findBook(name: string): number | null {
 export function bookName(num: number): string {
   return BOOKS[num - 1]?.name ?? ''
 }
+
+/** Books with only one chapter (Obadiah, Philemon, 2 John, 3 John, Jude): "Jude 3" means verse 3. */
+const SINGLE_CHAPTER = new Set([31, 57, 63, 64, 65])
+
+export function isSingleChapter(num: number): boolean {
+  return SINGLE_CHAPTER.has(num)
+}

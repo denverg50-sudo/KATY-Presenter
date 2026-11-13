@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { BOOKS, findBook, bookName } from './books'
+import { BOOKS, findBook, bookName, isSingleChapter } from './books'
 import {
   parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK, mapSlideIndex
 } from './scripture'
@@ -19,6 +19,36 @@ describe('books', () => {
     ['GEN', 1], ['Rev', 66], ['Ju', null], ['Tobit', null]
   ])('findBook(%s) -> %s', (name, num) => {
     expect(findBook(name as string)).toBe(num)
+  })
+})
+
+describe('single-chapter books', () => {
+  it('flags Obadiah, Philemon, 2 John, 3 John and Jude only', () => {
+    expect(BOOKS.filter((b) => isSingleChapter(b.num)).map((b) => b.num)).toEqual([31, 57, 63, 64, 65])
+  })
+  it.each([
+    ['Jude 24-25', 'Jude 1:24–25', { c: 1, v: 24 }, { c: 1, v: 25 }],
+    ['Jude 3', 'Jude 1:3', { c: 1, v: 3 }, { c: 1, v: 3 }],
+    ['Philemon 6', 'Philemon 1:6', { c: 1, v: 6 }, { c: 1, v: 6 }],
+    ['3 John 4', '3 John 1:4', { c: 1, v: 4 }, { c: 1, v: 4 }],
+    ['Obad 15', 'Obadiah 1:15', { c: 1, v: 15 }, { c: 1, v: 15 }],
+    ['2 John 12', '2 John 1:12', { c: 1, v: 12 }, { c: 1, v: 12 }],
+    ['Jude 1:24-25', 'Jude 1:24–25', { c: 1, v: 24 }, { c: 1, v: 25 }],
+    ['Jude 1', 'Jude 1', { c: 1, v: null }, { c: 1, v: null }]
+  ])('%s -> %s', (input, out, from, to) => {
+    const r = parseReference(input) as any
+    expect(r.ranges).toEqual([{ from, to }])
+    expect(formatReference(r)).toBe(out)
+  })
+  it('keeps chapter 1 across comma lists', () => {
+    expect(formatReference(parseReference('Jude 3, 5-6') as any)).toBe('Jude 1:3, 5–6')
+  })
+  it('looks up verses of chapter 1, with singular errors', () => {
+    const p = getPassage(mkBible(), parseReference('Jude 2-3') as any)
+    expect('error' in p ? p.error : p.verses.map((v) => v.text)).toEqual(['Jude two.', 'Jude three.'])
+    expect(getPassage(mkBible(), parseReference('Jude 2:1') as any)).toEqual({ error: 'Jude has 1 chapter' })
+    const one: Bible = { ...mkBible(), books: [{ num: 65, chapters: [['Only.']] }] }
+    expect(getPassage(one, parseReference('Jude 1:2') as any)).toEqual({ error: 'Jude 1 has 1 verse' })
   })
 })
 

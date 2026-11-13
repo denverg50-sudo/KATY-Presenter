@@ -1,4 +1,4 @@
-import { findBook, bookName } from './books'
+import { findBook, bookName, isSingleChapter } from './books'
 import type { Slide } from './lyrics'
 import type { Bible, Passage, PassageVerse } from './types'
 
@@ -34,8 +34,12 @@ export function parseReference(text: string): ScriptureRef | { error: string } {
     .replace(/(\d)\s+(?=\d)/g, '$1:')
   if (!rest) return { error: `Add a chapter, e.g. ${bookName(book)} 3` }
 
+  // One-chapter books: "Jude 3" / "Jude 24-25" are verses of chapter 1; "Jude 1" alone is the whole book
+  const single = isSingleChapter(book)
+  if (single && rest === '1') return { book, ranges: [{ from: { c: 1, v: null }, to: { c: 1, v: null } }] }
+
   const ranges: ScriptureRef['ranges'] = []
-  let cur: number | null = null // chapter context for bare verse numbers
+  let cur: number | null = single ? 1 : null // chapter context for bare verse numbers
   for (const seg of rest.split(',')) {
     const pieces = seg.split('-')
     const a = pieces.length <= 2 ? parsePart(pieces[0]) : null
@@ -60,7 +64,7 @@ export function parseReference(text: string): ScriptureRef | { error: string } {
       return { error: `"${bookName(book)} ${seg}" runs backwards` }
     }
     ranges.push({ from, to })
-    cur = to.v !== null ? to.c : null
+    cur = single ? 1 : to.v !== null ? to.c : null
   }
   return { book, ranges }
 }
@@ -83,6 +87,8 @@ export function formatReference(ref: ScriptureRef): string {
   return `${bookName(ref.book)} ${parts.join(', ')}`
 }
 
+const plural = (n: number, word: string): string => `${n} ${word}${n === 1 ? '' : 's'}`
+
 export const VERSE_MARK = (n: number): string => `⟦${n}⟧`
 
 export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: string } {
@@ -94,7 +100,7 @@ export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: 
   const nChapters = book.chapters.length
   for (const [range, { from, to }] of ref.ranges.entries()) {
     for (const c of [from.c, to.c]) {
-      if (c > nChapters) return { error: `${name} has ${nChapters} chapters` }
+      if (c > nChapters) return { error: `${name} has ${plural(nChapters, 'chapter')}` }
     }
     for (let c = from.c; c <= to.c; c++) {
       const texts = book.chapters[c - 1]
@@ -102,7 +108,7 @@ export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: 
       const first = c === from.c && from.v !== null ? from.v : 1
       const last = c === to.c && to.v !== null ? to.v : texts.length
       if (first > texts.length || last > texts.length) {
-        return { error: `${name} ${c} has ${texts.length} verses` }
+        return { error: `${name} ${c} has ${plural(texts.length, 'verse')}` }
       }
       for (let v = first; v <= last; v++) {
         verses.push({ book: ref.book, c, v, text: texts[v - 1], range })

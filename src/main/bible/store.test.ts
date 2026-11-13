@@ -154,3 +154,12 @@ describe('BibleStore', () => {
     await expect(store.commitImport(c.token, { name: 'c', abbrev: 'c', replaceId: null })).resolves.toBeTruthy()
   })
 })
+
+describe('shipped built-ins', () => {
+  it('serves John 3:16 from the real KJV', async () => {
+    const real = new BibleStore(mkdtempSync(path.join(tmpdir(), 'bible-')), path.join(__dirname, '../../../resources/bibles'))
+    const r = await real.passage('kjv', 'John 3:16')
+    expect(JSON.stringify(r)).toContain('For God so loved the world')
+    expect('error' in r).toBe(false)
+  })
+})

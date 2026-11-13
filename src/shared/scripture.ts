@@ -116,12 +116,8 @@ export interface ScriptureSlide extends Slide {
   footer: string
 }
 
-// Verses are grouped by the range they came from, so separate ranges never share a slide.
-export function buildScriptureSlides(
-  p: Passage,
-  versesPerSlide: 1 | 2 | 3,
-  showVerseNumbers: boolean
-): ScriptureSlide[] {
+/** The passage's verses split into slides. Verses are grouped by the range they came from, so separate ranges never share a slide. */
+export function slideChunks(p: Passage, versesPerSlide: 1 | 2 | 3): PassageVerse[][] {
   const runs: PassageVerse[][] = []
   for (const verse of p.verses) {
     const run = runs[runs.length - 1]
@@ -129,29 +125,55 @@ export function buildScriptureSlides(
     if (run && prev !== undefined && prev.range === verse.range) run.push(verse)
     else runs.push([verse])
   }
+  const chunks: PassageVerse[][] = []
+  for (const run of runs) for (let i = 0; i < run.length; i += versesPerSlide) chunks.push(run.slice(i, i + versesPerSlide))
+  return chunks
+}
 
-  const slides: ScriptureSlide[] = []
-  for (const run of runs) {
-    for (let i = 0; i < run.length; i += versesPerSlide) {
-      const chunk = run.slice(i, i + versesPerSlide)
-      const a = chunk[0]
-      const b = chunk[chunk.length - 1]
-      const full = formatReference({
-        book: a.book,
-        ranges: [{ from: { c: a.c, v: a.v }, to: { c: b.c, v: b.v } }]
-      })
-      const label = full.slice(bookName(a.book).length + 1)
-      slides.push({
-        key: `s${slides.length}`,
-        label,
-        text: chunk
-          .map((v) => (showVerseNumbers ? `${VERSE_MARK(v.v)} ${v.text}` : v.text))
-          .join(' '),
-        footer: `${full} · ${p.abbrev}`
-      })
+export function buildScriptureSlides(
+  p: Passage,
+  versesPerSlide: 1 | 2 | 3,
+  showVerseNumbers: boolean
+): ScriptureSlide[] {
+  return slideChunks(p, versesPerSlide).map((chunk, i) => {
+    const a = chunk[0]
+    const b = chunk[chunk.length - 1]
+    const full = formatReference({
+      book: a.book,
+      ranges: [{ from: { c: a.c, v: a.v }, to: { c: b.c, v: b.v } }]
+    })
+    return {
+      key: `s${i}`,
+      label: full.slice(bookName(a.book).length + 1),
+      text: chunk.map((v) => (showVerseNumbers ? `${VERSE_MARK(v.v)} ${v.text}` : v.text)).join(' '),
+      footer: `${full} · ${p.abbrev}`
     }
+  })
+}
+
+/**
+ * Where slide `index` of one layout lands in another (other verses per slide and/or translation):
+ * the new slide holding the first verse that was showing. Falls back to the same verse position, clamped.
+ */
+export function mapSlideIndex(
+  from: { passage: Passage; versesPerSlide: 1 | 2 | 3 },
+  index: number,
+  to: { passage: Passage; versesPerSlide: 1 | 2 | 3 }
+): number {
+  const toChunks = slideChunks(to.passage, to.versesPerSlide)
+  if (!toChunks.length) return 0
+  const fromChunks = slideChunks(from.passage, from.versesPerSlide)
+  const first = fromChunks[Math.max(0, Math.min(index, fromChunks.length - 1))]?.[0]
+  if (!first) return Math.max(0, Math.min(index, toChunks.length - 1))
+  const same = (v: PassageVerse): boolean => v.book === first.book && v.c === first.c && v.v === first.v
+  let at = toChunks.findIndex((chunk) => chunk.some(same))
+  if (at < 0) {
+    // Not in the other translation: use the verse's position in the passage instead
+    const pos = from.passage.verses.indexOf(first)
+    const target = to.passage.verses[Math.min(pos, to.passage.verses.length - 1)]
+    at = toChunks.findIndex((chunk) => chunk.includes(target))
   }
-  return slides
+  return Math.max(0, at)
 }
 
 export function searchBible(bible: Bible, query: string, limit = 200): PassageVerse[] {

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { BOOKS, findBook, bookName } from './books'
 import {
-  parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK
+  parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK, mapSlideIndex
 } from './scripture'
 import type { Bible } from './types'
 
@@ -127,6 +127,24 @@ describe('buildScriptureSlides', () => {
   it('does not merge across range boundaries', () => {
     const slides = buildScriptureSlides(pass('John 3:1, 3'), 3, true)
     expect(slides).toHaveLength(2)
+  })
+})
+
+describe('mapSlideIndex', () => {
+  const at = (r: string, versesPerSlide: 1 | 2 | 3) => ({ passage: pass(r), versesPerSlide })
+  it('keeps the first showing verse when verses per slide changes', () => {
+    // 1 per slide, slide 2 = 3:3 -> 2 per slide: [3:1-2][3:3-4] -> slide 1
+    expect(mapSlideIndex(at('John 3', 1), 2, at('John 3', 2))).toBe(1)
+    // 2 per slide, slide 1 = 3:3-4 -> 1 per slide -> 3:3 = slide 2
+    expect(mapSlideIndex(at('John 3', 2), 1, at('John 3', 1))).toBe(2)
+    expect(mapSlideIndex(at('John 3', 1), 3, at('John 3', 3))).toBe(1)
+  })
+  it('keeps the slide for the same layout (e.g. another translation)', () => {
+    expect(mapSlideIndex(at('John 3:1-3', 1), 1, at('John 3:1-3', 1))).toBe(1)
+  })
+  it('falls back to the verse position when the verse is missing, clamped', () => {
+    expect(mapSlideIndex(at('John 3', 1), 3, at('John 3:1-2', 1))).toBe(1)
+    expect(mapSlideIndex(at('John 3', 1), 99, at('John 3', 2))).toBe(1)
   })
 })
 

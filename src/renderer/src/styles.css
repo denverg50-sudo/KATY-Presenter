@@ -154,6 +154,8 @@ body.mac .toolbar { padding-left: 14px; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
 .text-area { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.slide-footer { flex: none; padding-top: 0.6em; white-space: pre-wrap; opacity: .9; }
+.vnum { font-size: .5em; vertical-align: super; opacity: .8; margin-right: .15em; }
 .slide-text { white-space: pre-wrap; overflow-wrap: break-word; width: 100%; box-sizing: border-box; }
 .logo-layer, .black-layer { opacity: 0; transition: opacity var(--fade) ease; pointer-events: none; background: #000; }
 .logo-layer.on, .black-layer.on { opacity: 1; }

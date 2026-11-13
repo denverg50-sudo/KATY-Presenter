@@ -82,7 +82,7 @@ export function SlideGrid() {
           const isLive = !!live && samePresentable(live.item, selected) && live.index === i
           return (
             <button key={slide.key} className={`thumb ${isLive ? 'live' : ''}`} onClick={() => actions.goLive(selected, i)}>
-              <SlideRenderer text={slide.text} theme={theme} thumbnail />
+              <SlideRenderer text={slide.text} footer={'footer' in slide ? slide.footer : null} theme={theme} thumbnail />
               <div className="thumb-label">
                 <span className="num">{i + 1}</span>
                 {slide.label && <span className="tag">{abbreviate(slide.label)}</span>}

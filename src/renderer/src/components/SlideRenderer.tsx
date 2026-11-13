@@ -7,6 +7,8 @@ export const CANVAS_H = 1080
 
 interface Props {
   text: string | null
+  /** Scripture reference line shown under the text */
+  footer?: string | null
   theme: Theme | null
   black?: boolean
   logo?: boolean
@@ -24,7 +26,7 @@ interface Props {
  * what the operator sees is exactly what the audience sees.
  */
 export function SlideRenderer(props: Props) {
-  const { text, theme, black = false, logo = false, logoMedia = '', transitionMs = 0, thumbnail = false } = props
+  const { text, footer = null, theme, black = false, logo = false, logoMedia = '', transitionMs = 0, thumbnail = false } = props
   const outer = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(0)
 
@@ -57,8 +59,8 @@ export function SlideRenderer(props: Props) {
           </Crossfade>
         )}
         {theme && text && (
-          <Crossfade k={`${theme.id}|${text}`} ms={ms}>
-            <TextLayer text={text} theme={theme} />
+          <Crossfade k={`${theme.id}|${text}|${footer ?? ''}`} ms={ms}>
+            <TextLayer text={text} footer={footer} theme={theme} />
           </Crossfade>
         )}
         <div className={`layer logo-layer ${logo ? 'on' : ''}`}>
@@ -131,10 +133,30 @@ function BackgroundLayer({ bg, thumbnail }: { bg: Background; thumbnail: boolean
 
 const fitCache = new Map<string, number>()
 
-function TextLayer({ text, theme }: { text: string; theme: Theme }) {
+const MARK_RE = /⟦(\d+)⟧/g
+
+/** Turns ⟦n⟧ verse marks into superscript React nodes; everything else stays plain text. */
+function withVerseMarks(text: string): ReactNode {
+  if (!text.includes('⟦')) return text
+  const out: ReactNode[] = []
+  let last = 0
+  for (const m of text.matchAll(MARK_RE)) {
+    if (m.index > last) out.push(text.slice(last, m.index))
+    out.push(
+      <sup key={m.index} className="vnum">
+        {m[1]}
+      </sup>
+    )
+    last = m.index + m[0].length
+  }
+  if (last < text.length) out.push(text.slice(last))
+  return out
+}
+
+function TextLayer({ text, footer, theme }: { text: string; footer: string | null; theme: Theme }) {
   const box = useRef<HTMLDivElement>(null)
   const inner = useRef<HTMLDivElement>(null)
-  const cacheKey = `${theme.id}|${theme.updatedAt}|${theme.fontSize}|${text}`
+  const cacheKey = `${theme.id}|${theme.updatedAt}|${theme.fontSize}|${footer ?? ''}|${text}`
   const [size, setSize] = useState(() => fitCache.get(cacheKey) ?? theme.fontSize)
 
   // Shrink the text until it fits inside the padded area (binary search)
@@ -162,6 +184,8 @@ function TextLayer({ text, theme }: { text: string; theme: Theme }) {
     el.style.fontSize = `${lo}px`
     setSize(lo)
   }, [cacheKey, theme.fontSize])
+
+  const footerSize = Math.min(60, Math.max(24, Math.round(theme.fontSize * 0.4)))
 
   const pad = (theme.padding / 100) * CANVAS_W
   const shadows: string[] = []
@@ -198,9 +222,26 @@ function TextLayer({ text, theme }: { text: string; theme: Theme }) {
             borderRadius: theme.band ? 12 : undefined
           }}
         >
-          {text}
+          {withVerseMarks(text)}
         </div>
       </div>
+      {footer && (
+        <div
+          className="slide-footer"
+          style={{
+            fontFamily: theme.fontFamily,
+            fontSize: footerSize,
+            color: theme.color,
+            fontWeight: theme.bold ? 700 : 400,
+            textAlign: theme.textAlign,
+            textShadow: shadows.join(', ') || 'none',
+            WebkitTextStroke: theme.outline ? `${theme.outline}px ${theme.outlineColor}` : undefined,
+            paintOrder: 'stroke fill'
+          }}
+        >
+          {footer}
+        </div>
+      )}
     </div>
   )
 }

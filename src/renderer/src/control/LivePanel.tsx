@@ -17,6 +17,7 @@ export function LivePanel() {
       <SlideRenderer
         className="preview"
         text={live.text}
+        footer={live.footer}
         theme={live.theme}
         black={live.black}
         logo={live.logo}
@@ -44,7 +45,7 @@ export function LivePanel() {
         </button>
       </div>
       <div className="next-label">Next {next.label && <span className="sub">— {next.label}</span>}</div>
-      <SlideRenderer className="preview small" text={next.text} theme={next.theme} thumbnail />
+      <SlideRenderer className="preview small" text={next.text} footer={next.footer} theme={next.theme} thumbnail />
     </section>
   )
 }
@@ -52,17 +53,19 @@ export function LivePanel() {
 type S = Parameters<Parameters<typeof useStore>[0]>[0]
 
 /** What pressing "Next" will show, including the first slide of the next item in the service. */
-function nextSlide(s: S): { text: string | null; theme: ReturnType<typeof themeFor>; label: string } {
-  const none = { text: null, theme: null, label: '' }
+function nextSlide(s: S): { text: string | null; footer: string | null; theme: ReturnType<typeof themeFor>; label: string } {
+  const none = { text: null, footer: null, theme: null, label: '' }
   if (!s.live) {
     const first = slidesFor(s.selected, s)[0]
-    return first ? { text: first.text, theme: themeFor(s.selected, s), label: titleOf(s.selected, s) } : none
+    return first ? { text: first.text, footer: footerOf(first), theme: themeFor(s.selected, s), label: titleOf(s.selected, s) } : none
   }
   const slides = slidesFor(s.live.item, s)
   const after = slides[s.live.index + 1]
-  if (after) return { text: after.text, theme: themeFor(s.live.item, s), label: after.label }
+  if (after) return { text: after.text, footer: footerOf(after), theme: themeFor(s.live.item, s), label: after.label }
   const next = neighbour(s, s.live.itemId, 1)
   if (!next) return { ...none, label: 'End' }
   if ('pending' in next) return { ...none, label: titleOf(next.pending, s) }
-  return { text: next.slides[0].text, theme: themeFor(next.p, s), label: titleOf(next.p, s) }
+  return { text: next.slides[0].text, footer: footerOf(next.slides[0]), theme: themeFor(next.p, s), label: titleOf(next.p, s) }
 }
+
+const footerOf = (slide: object): string | null => ('footer' in slide ? (slide.footer as string) : null)

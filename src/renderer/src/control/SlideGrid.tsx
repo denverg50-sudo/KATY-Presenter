@@ -1,16 +1,24 @@
 import { useState } from 'react'
 import { abbreviate } from '@shared/lyrics'
 import { SlideRenderer } from '../components/SlideRenderer'
-import { actions, slidesOf, themeFor, useStore } from './store'
+import { passageKey } from './presentable'
+import { actions, samePresentable, slidesFor, themeFor, titleOf, useStore } from './store'
 
 export function SlideGrid() {
-  const song = useStore((s) => s.songs.find((x) => x.id === s.selectedSongId))
+  const selected = useStore((s) => s.selected)
+  const song = useStore((s) => {
+    const p = s.selected
+    return p?.kind === 'song' ? s.songs.find((x) => x.id === p.songId) : undefined
+  })
+  const slides = useStore((s) => slidesFor(s.selected, s))
+  const title = useStore((s) => titleOf(s.selected, s))
+  const status = useStore((s) => scriptureStatus(s))
   const themes = useStore((s) => s.themes)
-  const theme = useStore((s) => themeFor(song, s))
+  const theme = useStore((s) => themeFor(s.selected, s))
   const live = useStore((s) => s.live)
   const [size, setSize] = useState(260)
 
-  if (!song) {
+  if (!selected || (selected.kind === 'song' && !song)) {
     return (
       <div className="placeholder">
         <h2>Select a song</h2>
@@ -23,32 +31,35 @@ export function SlideGrid() {
     )
   }
 
-  const slides = slidesOf(song)
   const remove = (): void => {
-    if (confirm(`Delete “${song.title}” from the library? This cannot be undone.`)) void actions.deleteSong(song.id)
+    if (song && confirm(`Delete “${song.title}” from the library? This cannot be undone.`)) void actions.deleteSong(song.id)
   }
 
   return (
     <div className="slide-grid-wrap">
       <div className="grid-head">
         <div>
-          <h1>{song.title}</h1>
+          <h1>{title}</h1>
           <div className="meta">
-            {[song.author, song.ccli && `CCLI #${song.ccli}`, song.copyright].filter(Boolean).join(' · ')}
+            {song ? [song.author, song.ccli && `CCLI #${song.ccli}`, song.copyright].filter(Boolean).join(' · ') : status}
           </div>
         </div>
         <div className="spacer" />
-        <label className="inline">
-          Theme
-          <select value={song.themeId} onChange={(e) => void actions.setSongTheme(song, e.target.value)}>
-            <option value="">Default</option>
-            {themes.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name}
-              </option>
-            ))}
-          </select>
-        </label>
+        {song && (
+          <>
+            <label className="inline">
+              Theme
+              <select value={song.themeId} onChange={(e) => void actions.setSongTheme(song, e.target.value)}>
+                <option value="">Default</option>
+                {themes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
         <input
           type="range"
           min={160}
@@ -57,16 +68,20 @@ export function SlideGrid() {
           onChange={(e) => setSize(+e.target.value)}
           title="Thumbnail size"
         />
-        <button onClick={() => actions.editSong(song)}>✎ Edit</button>
-        <button className="ghost danger" onClick={remove} title="Delete song">
-          🗑
-        </button>
+        {song && (
+          <>
+            <button onClick={() => actions.editSong(song)}>✎ Edit</button>
+            <button className="ghost danger" onClick={remove} title="Delete song">
+              🗑
+            </button>
+          </>
+        )}
       </div>
       <div className="slide-grid scroll" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(${size}px, 1fr))` }}>
         {slides.map((slide, i) => {
-          const isLive = live?.songId === song.id && live.index === i
+          const isLive = !!live && samePresentable(live.item, selected) && live.index === i
           return (
-            <button key={slide.key} className={`thumb ${isLive ? 'live' : ''}`} onClick={() => actions.goLive(song.id, i)}>
+            <button key={slide.key} className={`thumb ${isLive ? 'live' : ''}`} onClick={() => actions.goLive(selected, i)}>
               <SlideRenderer text={slide.text} theme={theme} thumbnail />
               <div className="thumb-label">
                 <span className="num">{i + 1}</span>
@@ -76,7 +91,7 @@ export function SlideGrid() {
             </button>
           )
         })}
-        {!slides.length && (
+        {!slides.length && song && (
           <div className="empty">
             This song has no lyrics yet. <button onClick={() => actions.editSong(song)}>Add lyrics</button>
           </div>
@@ -84,4 +99,16 @@ export function SlideGrid() {
       </div>
     </div>
   )
+}
+
+type S = Parameters<Parameters<typeof useStore>[0]>[0]
+
+/** Meta line under a scripture title: loading, lookup error or missing Bible. */
+function scriptureStatus(s: S): string {
+  const p = s.selected
+  if (p?.kind !== 'scripture') return ''
+  if (!s.bibles.some((b) => b.id === p.bibleId)) return 'Bible not installed'
+  const found = s.passages[passageKey(p.bibleId, p.ref)]
+  if (!found) return 'Loading…'
+  return 'error' in found ? found.error : `${found.verses.length} verses · ${p.versesPerSlide} per slide`
 }

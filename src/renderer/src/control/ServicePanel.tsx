@@ -1,10 +1,13 @@
 import { useState } from 'react'
-import { actions, currentService, defaultServiceName, useStore } from './store'
+import { actions, currentService, defaultServiceName, itemPresentable, titleOf, useStore } from './store'
 
 export function ServicePanel() {
   const services = useStore((s) => s.services)
   const svc = useStore((s) => currentService(s))
   const songs = useStore((s) => s.songs)
+  const bibles = useStore((s) => s.bibles)
+  const passages = useStore((s) => s.passages)
+  const settings = useStore((s) => s.settings)
   const selectedItem = useStore((s) => s.selectedItemId)
   const liveItem = useStore((s) => s.live?.itemId)
   const [dropAt, setDropAt] = useState<number | null>(null)
@@ -63,7 +66,15 @@ export function ServicePanel() {
         onDrop={(e) => onDrop(e, svc?.items.length ?? 0)}
       >
         {svc?.items.map((item, i) => {
-          const song = songs.find((s) => s.id === item.songId)
+          const p = itemPresentable(item, { settings })
+          const song = p.kind === 'song' ? songs.find((s) => s.id === p.songId) : undefined
+          // Scripture rows are plain text for now; the Bible tab work styles them and the missing-Bible placeholder
+          const title =
+            p.kind === 'song'
+              ? (song?.title ?? 'Missing song')
+              : bibles.some((b) => b.id === p.bibleId)
+                ? `📖 ${titleOf(p, { songs, bibles, passages, settings })}`
+                : `📖 ${p.ref} (Bible not installed)`
           return (
             <li
               key={item.id}
@@ -82,10 +93,10 @@ export function ServicePanel() {
                 e.stopPropagation()
                 onDrop(e, i)
               }}
-              onClick={() => song && actions.selectSong(song.id, item.id)}
+              onClick={() => (p.kind === 'scripture' || song) && actions.selectItem(item)}
             >
               <span className="num">{i + 1}</span>
-              <span className="title">{song?.title ?? 'Missing song'}</span>
+              <span className="title">{title}</span>
               <button
                 className="icon"
                 title="Remove from service"

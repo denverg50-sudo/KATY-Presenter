@@ -30,8 +30,8 @@ export function ControlApp() {
       const t = e.target as HTMLElement
       if (t.closest('input, textarea, select, [contenteditable]')) return
       const k = e.key
-      if (k === 'ArrowRight' || k === 'ArrowDown' || k === ' ' || k === 'PageDown') actions.step(1)
-      else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') actions.step(-1)
+      if (k === 'ArrowRight' || k === 'ArrowDown' || k === ' ' || k === 'PageDown') void actions.step(1)
+      else if (k === 'ArrowLeft' || k === 'ArrowUp' || k === 'PageUp') void actions.step(-1)
       else if (k === 'b' || k === 'B') actions.toggle('black')
       else if (k === 'c' || k === 'C') actions.toggle('clear')
       else if (k === 'l' || k === 'L') actions.toggle('logo')

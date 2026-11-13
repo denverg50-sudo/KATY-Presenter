@@ -1,5 +1,5 @@
 import { SlideRenderer } from '../components/SlideRenderer'
-import { actions, currentService, liveState, slidesOf, themeFor, useStore } from './store'
+import { actions, liveState, neighbour, slidesFor, themeFor, titleOf, useStore } from './store'
 import { useShallow } from 'zustand/react/shallow'
 
 export function LivePanel() {
@@ -38,8 +38,8 @@ export function LivePanel() {
         </button>
       </div>
       <div className="nav-buttons">
-        <button onClick={() => actions.step(-1)}>◀ Previous</button>
-        <button className="primary" onClick={() => actions.step(1)}>
+        <button onClick={() => void actions.step(-1)}>◀ Previous</button>
+        <button className="primary" onClick={() => void actions.step(1)}>
           Next ▶
         </button>
       </div>
@@ -51,23 +51,18 @@ export function LivePanel() {
 
 type S = Parameters<Parameters<typeof useStore>[0]>[0]
 
-/** What pressing "Next" will show, including the first slide of the next song in the service. */
+/** What pressing "Next" will show, including the first slide of the next item in the service. */
 function nextSlide(s: S): { text: string | null; theme: ReturnType<typeof themeFor>; label: string } {
   const none = { text: null, theme: null, label: '' }
   if (!s.live) {
-    const song = s.songs.find((x) => x.id === s.selectedSongId)
-    const first = slidesOf(song)[0]
-    return first ? { text: first.text, theme: themeFor(song, s), label: song!.title } : none
+    const first = slidesFor(s.selected, s)[0]
+    return first ? { text: first.text, theme: themeFor(s.selected, s), label: titleOf(s.selected, s) } : none
   }
-  const song = s.songs.find((x) => x.id === s.live!.songId)
-  const slides = slidesOf(song)
-  if (s.live.index + 1 < slides.length) {
-    return { text: slides[s.live.index + 1].text, theme: themeFor(song, s), label: slides[s.live.index + 1].label }
-  }
-  const svc = currentService(s)
-  const pos = svc?.items.findIndex((i) => i.id === s.live!.itemId) ?? -1
-  const item = pos >= 0 ? svc!.items[pos + 1] : undefined
-  const nextSong = item && s.songs.find((x) => x.id === item.songId)
-  const first = slidesOf(nextSong)[0]
-  return first ? { text: first.text, theme: themeFor(nextSong, s), label: nextSong!.title } : { ...none, label: 'End' }
+  const slides = slidesFor(s.live.item, s)
+  const after = slides[s.live.index + 1]
+  if (after) return { text: after.text, theme: themeFor(s.live.item, s), label: after.label }
+  const next = neighbour(s, s.live.itemId, 1)
+  if (!next) return { ...none, label: 'End' }
+  if ('pending' in next) return { ...none, label: titleOf(next.pending, s) }
+  return { text: next.slides[0].text, theme: themeFor(next.p, s), label: titleOf(next.p, s) }
 }

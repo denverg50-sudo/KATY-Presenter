@@ -5,7 +5,7 @@ import { actions, useStore } from './store'
 
 export function Library() {
   const songs = useStore((s) => s.songs)
-  const selected = useStore((s) => s.selectedSongId)
+  const selected = useStore((s) => (s.selected?.kind === 'song' ? s.selected.songId : null))
   const [query, setQuery] = useState('')
 
   const index = useMemo(() => {

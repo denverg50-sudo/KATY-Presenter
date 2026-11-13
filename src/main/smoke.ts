@@ -31,7 +31,7 @@ export async function runSmoke(dir: string): Promise<void> {
     await shoot('01-start')
     await js(`__katy.actions.selectSong('song-amazing-grace'); __katy.actions.addToService('song-amazing-grace')`)
     await wait(600)
-    await js(`__katy.actions.goLive('song-amazing-grace', 0)`)
+    await js(`__katy.actions.goLive({ kind: 'song', songId: 'song-amazing-grace' }, 0)`)
     await wait(900)
     await shoot('02-live')
     await js(`__katy.actions.setSongTheme(__katy.useStore.getState().songs[0], 'theme-sunrise'); __katy.actions.step(1)`)

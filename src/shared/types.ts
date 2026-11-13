@@ -56,7 +56,15 @@ export interface Theme {
 
 export interface ServiceItem {
   id: string
-  songId: string
+  /** Missing = song (services saved before Bibles) */
+  kind?: 'song' | 'scripture'
+  songId?: string
+  bibleId?: string
+  /** Formatted scripture reference, e.g. "John 3:16–18" */
+  ref?: string
+  /** Theme override for scripture; empty = scripture theme from Settings */
+  themeId?: string
+  versesPerSlide?: 1 | 2 | 3
 }
 
 export interface Service {
@@ -93,6 +101,8 @@ export interface LiveState {
   logo: boolean
   logoMedia: string
   transitionMs: number
+  /** Scripture reference shown under the text, e.g. "John 3:17 · KJV"; null for songs */
+  footer?: string | null
 }
 
 export interface DisplayInfo {

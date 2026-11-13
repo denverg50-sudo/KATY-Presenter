@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, dialog } from 'electron'
 import { getControl, getOutput } from './windows'
 import { promises as fs } from 'fs'
 import path from 'path'
@@ -67,10 +67,60 @@ export async function runSmoke(dir: string): Promise<void> {
     await js(`__katy.actions.step(1)`)
     await wait(900)
     await shoot('06-scripture')
+    await smokeBibleImport(js, shoot, wait)
     const errors = await js(`window.__katyErrors || []`)
     await fs.writeFile(path.join(dir, 'errors.json'), JSON.stringify(errors, null, 2))
   } catch (e) {
     await fs.writeFile(path.join(dir, 'errors.json'), JSON.stringify([String(e)]))
   }
   app.quit()
+}
+
+/** Settings → Bibles → import the Zefania fixture (file dialog stubbed), rename, use, delete. */
+async function smokeBibleImport(
+  js: (code: string) => Promise<unknown>,
+  shoot: (name: string) => Promise<void>,
+  wait: (ms: number) => Promise<void>
+): Promise<void> {
+  const fixture = path.join(app.getAppPath(), 'src/main/bible/fixtures/zefania.xml')
+  dialog.showOpenDialog = (async () => ({ canceled: false, filePaths: [fixture] })) as unknown as typeof dialog.showOpenDialog
+  const click = (sel: string, text: string): string =>
+    `[...document.querySelectorAll(${JSON.stringify(sel)})].find((b) => b.textContent.includes(${JSON.stringify(text)})).click()`
+  const typeInto = (sel: string, value: string): string => `(() => {
+    const el = document.querySelector(${JSON.stringify(sel)})
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(el, ${JSON.stringify(value)})
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+  })()`
+  await js(`window.confirm = () => true; __katy.actions.openSettings(true)`)
+  await wait(500)
+  await js(click('.modal button', 'Import Bible'))
+  await wait(1500)
+  await shoot('07-import')
+  await js(typeInto('.modal .modal label:nth-of-type(2) input', 'FIX'))
+  await js(click('.modal footer button', 'Add Bible'))
+  await wait(1000)
+  await js(`__katy.actions.openSettings(false)`)
+  await wait(300)
+  await js(`[...document.querySelectorAll('.tabs button')].find((b) => b.textContent === 'Bible').click()`)
+  await wait(300)
+  await js(`(() => {
+    const fire = (el, proto, value, type) => {
+      Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value)
+      el.dispatchEvent(new Event(type, { bubbles: true }))
+    }
+    const b = __katy.useStore.getState().bibles.find((x) => x.abbrev === 'FIX')
+    if (!b) throw new Error('imported Bible missing')
+    fire(document.querySelector('.ref-row select'), HTMLSelectElement.prototype, b.id, 'change')
+    fire(document.querySelector('.ref-input'), HTMLInputElement.prototype, 'John 3:16', 'input')
+  })()`)
+  await wait(700)
+  await js(`[...document.querySelectorAll('.ref-actions button')].find((b) => b.textContent === 'Add to service').click()`)
+  await wait(500)
+  await js(`__katy.actions.openSettings(true)`)
+  await wait(400)
+  await js(click('.bible-table button', '🗑'))
+  await wait(800)
+  await js(`__katy.actions.openSettings(false)`)
+  await wait(500)
+  await shoot('08-missing-bible')
 }

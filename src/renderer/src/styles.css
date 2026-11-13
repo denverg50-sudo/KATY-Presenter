@@ -232,3 +232,15 @@ textarea.lyrics { flex: 1; min-height: 240px; resize: none; font: 14px/1.5 ui-mo
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: #353b47; border-radius: 10px; border: 2px solid transparent; background-clip: content-box; }
+
+/* ---------- Bible settings ---------- */
+.bible-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.bible-table td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: middle; }
+.bible-table input { width: 90px; }
+.bible-table .tag { font-size: 11px; color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 1px 8px; }
+.bible-table .act { text-align: right; width: 80px; }
+.form-error { color: #ff7a7c; margin: 0; font-size: 12px; }
+.form-warn { color: #e8b04a; margin: 0; font-size: 12px; }
+.spinner { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--line); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; vertical-align: -2px; margin-right: 6px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.radio-col { display: flex; flex-direction: column; gap: 6px; }

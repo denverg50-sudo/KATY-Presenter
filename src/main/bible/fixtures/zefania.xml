@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<XMLBIBLE xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" biblename="Sample Zefania Bible">
+  <INFORMATION>
+    <title>Sample Zefania Bible</title>
+    <identifier>SZB</identifier>
+    <language>ENG</language>
+  </INFORMATION>
+  <BIBLEBOOK bnumber="19" bname="Psalms">
+    <CHAPTER cnumber="23">
+      <VERS vnumber="1">The Maker is my guide; I shall not wander.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+  <BIBLEBOOK bnumber="43" bname="John">
+    <CHAPTER cnumber="3">
+      <VERS vnumber="16">For the Giver so cherished the world, “every soul” that trusts shall not perish, café
+        and gain light.<NOTE type="x">ignore me</NOTE></VERS>
+      <VERS vnumber="18">Skipped ahead.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+  <BIBLEBOOK bnumber="67" bname="Tobit">
+    <CHAPTER cnumber="1">
+      <VERS vnumber="1">Apocryphal sample.</VERS>
+    </CHAPTER>
+  </BIBLEBOOK>
+</XMLBIBLE>

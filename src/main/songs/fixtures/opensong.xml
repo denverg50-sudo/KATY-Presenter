@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<song>
+  <title>Amazing Grace</title>
+  <author>John Newton</author>
+  <copyright>Public Domain</copyright>
+  <ccli>22025</ccli>
+  <presentation>V1 C V2 C</presentation>
+  <lyrics>[V1]
+.G              D
+ Amazing grace how sweet the sound
+ That saved a wretch like me
+;a comment line
+[C]
+ Oh sing it out for all to hear
+||
+ Grace is here for you and me
+[V2]
+ Twas grace that taught my heart to fear
+ And grace my fears relieved</lyrics>
+</song>

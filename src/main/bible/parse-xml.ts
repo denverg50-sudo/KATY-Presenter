@@ -46,6 +46,13 @@ const USFX_SKIP = new Set(['h', 'toc', 'id', 'ide', 'mt', 'mt1', 'mt2', 'mt3', '
 const OSIS_SKIP = new Set(['rdg', 'header'])
 const BREAKS = /^(p|q\d?|m|mi|b|l|lg|lb|li\d?|pi\d?|nb|d)$/
 
+const SOURCE_LABEL: Record<XmlBibleFormat, string> = {
+  zefania: 'Zefania XML',
+  opensong: 'OpenSong XML',
+  osis: 'OSIS XML',
+  usfx: 'USFX XML'
+}
+
 const num = (s: string | undefined): number => {
   const n = parseInt(s ?? '', 10)
   return Number.isFinite(n) ? n : 0
@@ -101,8 +108,8 @@ export function parseXmlBible(xml: string, format: XmlBibleFormat, fileName: str
     endVerse()
     chapter = 0
     verse = 0
-    let n = findBook(name)
-    if (n === null && !name && fallbackNum >= 1 && fallbackNum <= 66) n = fallbackNum
+    // Zefania: a canonical bnumber wins; otherwise fall back to the book name.
+    let n: number | null = fallbackNum >= 1 && fallbackNum <= 66 ? fallbackNum : findBook(name)
     book = n ?? 0
     if (n === null) skip(name || String(fallbackNum))
   }
@@ -238,5 +245,5 @@ export function parseXmlBible(xml: string, format: XmlBibleFormat, fileName: str
 
   const base = baseName(fileName)
   const abbrev = ident && ident.length <= 12 && !/\s/.test(ident) ? ident : base.toUpperCase().slice(0, 12)
-  return { name: title || base, abbrev, source: fileName, books: out, skipped }
+  return { name: title || base, abbrev, source: SOURCE_LABEL[format], books: out, skipped }
 }

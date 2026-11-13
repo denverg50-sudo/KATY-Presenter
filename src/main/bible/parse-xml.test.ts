@@ -16,6 +16,8 @@ const JOHN316 = 'For the Giver so cherished the world, “every soul” that tru
 const JOHN316_LATIN = 'For the Giver so cherished the world, "every soul" that trusts shall not perish, café and gain light.'
 const PS231 = 'The Maker is my guide; I shall not wander.'
 
+const LABEL = { zefania: 'Zefania XML', opensong: 'OpenSong XML', osis: 'OSIS XML', usfx: 'USFX XML' }
+
 const cases: [string, 'zefania' | 'opensong' | 'osis' | 'usfx', string, string][] = [
   ['zefania.xml', 'zefania', 'Tobit', JOHN316],
   ['osis-milestone.xml', 'osis', 'Tob', JOHN316],
@@ -37,7 +39,7 @@ describe('parseXmlBible', () => {
       expect(b.books.find((x) => x.num === 19)!.chapters[22][0]).toBe(PS231)
       expect(b.skipped).toContain(skip)
       expect(b.books.length).toBe(2)
-      expect(b.source).toBeTruthy()
+      expect(b.source).toBe(LABEL[fmt])
     })
   }
 
@@ -49,6 +51,16 @@ describe('parseXmlBible', () => {
     expect(b.books.find((x) => x.num === 19)!.chapters[22][0]).toBe(PS231)
     expect(b.skipped).toContain('Tobit')
     expect(b.name).toBe('opensong')
+    expect(b.source).toBe('OpenSong XML')
+  })
+
+  it('resolves Zefania books by bnumber first', () => {
+    const xml = `<XMLBIBLE><BIBLEBOOK bnumber="1" bname="1. Mose"><CHAPTER cnumber="1"><VERS vnumber="1">In the start.</VERS></CHAPTER></BIBLEBOOK>
+      <BIBLEBOOK bnumber="67" bname="Zork"><CHAPTER cnumber="1"><VERS vnumber="1">x</VERS></CHAPTER></BIBLEBOOK></XMLBIBLE>`
+    const b = parseXmlBible(xml, 'zefania', 'z.xml')
+    expect(b.books.find((x) => x.num === 1)!.chapters[0][0]).toBe('In the start.')
+    expect(b.books.length).toBe(1)
+    expect(b.skipped).toEqual(['Zork'])
   })
 
   it('reads metadata', () => {

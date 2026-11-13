@@ -12,7 +12,7 @@ Requires Node.js 22+.
 ```bash
 npm install
 npm run dev        # run the app with hot reload
-npm test           # unit tests (lyrics parser, storage, scripture, Bible import)
+npm test           # unit tests (lyrics parser, storage, scripture, Bible import, song import)
 npm run typecheck
 npm run bibles     # regenerate the built-in Bibles (needs internet)
 ```
@@ -45,6 +45,7 @@ The installers are unsigned, so users see a one-time warning (see INSTALL.md). T
 | Preload bridge — the only API the UI can use | `src/preload/index.ts` |
 | Shared types, lyrics → slides parser, reference parser (`scripture.ts`), starter themes | `src/shared/` |
 | Bibles: store, search, importers (Zefania, OpenSong, OSIS, USFX, OpenLP), import worker | `src/main/bible/` |
+| Song import: scanner, format detection, parsers (FreeShow, OpenLyrics, OpenSong, ChordPro, SongSelect, text), import worker | `src/main/songs/` |
 | Operator UI (React + Zustand) | `src/renderer/src/control/` |
 | Projector screen | `src/renderer/src/output/` |
 | One slide renderer used for thumbnails, previews and the projector | `src/renderer/src/components/SlideRenderer.tsx` |
@@ -63,6 +64,6 @@ The KJV, ASV, WEB and BSB (all public domain) live in `resources/bibles/*.json.g
 ## Roadmap
 
 1. ~~Bible verses~~ (done in 0.2.0: built-in KJV/ASV/WEB/BSB, import of your own Bibles, reference lookup, word search, service-list passages).
-2. Import songs from OpenLyrics XML, plain text, and ProPresenter.
+2. ~~Song import~~ (done in 0.3.0: FreeShow, OpenLyrics/OpenLP, OpenSong, ChordPro, CCLI SongSelect, plain text). Still to do: ProPresenter and EasyWorship.
 3. Stage display for musicians and a phone remote over Wi-Fi.
 4. NDI / livestream output.

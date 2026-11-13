@@ -44,7 +44,7 @@ The installers are unsigned, so users see a one-time warning (see INSTALL.md). T
 | Electron main process (windows, projector placement, storage, IPC) | `src/main/` |
 | Preload bridge — the only API the UI can use | `src/preload/index.ts` |
 | Shared types, lyrics → slides parser, reference parser (`scripture.ts`), starter themes | `src/shared/` |
-| Bibles: store, search, importers (Zefania, OpenSong, OSIS, USFX, OpenLP), import worker | `src/main/bibles/` |
+| Bibles: store, search, importers (Zefania, OpenSong, OSIS, USFX, OpenLP), import worker | `src/main/bible/` |
 | Operator UI (React + Zustand) | `src/renderer/src/control/` |
 | Projector screen | `src/renderer/src/output/` |
 | One slide renderer used for thumbnails, previews and the projector | `src/renderer/src/components/SlideRenderer.tsx` |

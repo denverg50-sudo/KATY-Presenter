@@ -18,7 +18,7 @@ export async function checkForUpdate(repo: string): Promise<UpdateInfo | null> {
   if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) return null
   try {
     const res = await net.fetch(`https://api.github.com/repos/${repo}/releases/latest`, {
-      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'SelahPresenter' }
+      headers: { Accept: 'application/vnd.github+json', 'User-Agent': 'KatyPresenter' }
     })
     if (!res.ok) return null
     const data = (await res.json()) as { tag_name: string; html_url: string }

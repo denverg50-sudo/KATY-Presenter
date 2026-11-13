@@ -9,7 +9,7 @@ let root: string
 let store: Storage
 
 beforeEach(async () => {
-  root = mkdtempSync(path.join(tmpdir(), 'selah-'))
+  root = mkdtempSync(path.join(tmpdir(), 'katy-'))
   store = new Storage(root)
   await store.init()
 })
@@ -55,7 +55,7 @@ describe('Storage', () => {
     const zip = path.join(root, 'backup.zip')
     await store.save('songs', { id: 'extra', title: 'Extra' })
     await store.exportZip(zip)
-    const other = new Storage(mkdtempSync(path.join(tmpdir(), 'selah-')))
+    const other = new Storage(mkdtempSync(path.join(tmpdir(), 'katy-')))
     await other.init()
     await other.remove('songs', 'song-amazing-grace')
     await other.importZip(zip)

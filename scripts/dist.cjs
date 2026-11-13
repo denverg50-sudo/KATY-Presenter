@@ -8,7 +8,7 @@ const path = require('path')
 
 const root = path.join(__dirname, '..')
 const args = process.argv.slice(2)
-const out = process.platform === 'darwin' ? path.join(os.tmpdir(), 'selah-presenter-build') : path.join(root, 'dist')
+const out = process.platform === 'darwin' ? path.join(os.tmpdir(), 'katy-presenter-build') : path.join(root, 'dist')
 fs.rmSync(out, { recursive: true, force: true })
 
 const bin = path.join(root, 'node_modules', '.bin', process.platform === 'win32' ? 'electron-builder.cmd' : 'electron-builder')

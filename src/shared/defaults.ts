@@ -134,6 +134,6 @@ export function defaultSettings(): Settings {
     defaultThemeId: DEFAULT_THEME_ID,
     logoMedia: '',
     transitionMs: 400,
-    updateRepo: ''
+    updateRepo: 'denverg50-sudo/KATY-Presenter'
   }
 }

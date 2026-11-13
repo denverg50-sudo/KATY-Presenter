@@ -97,7 +97,7 @@ function Settings() {
         <label>
           GitHub repository for releases <span className="sub">(owner/repo)</span>
           <input
-            placeholder="e.g. mychurch/selah-presenter"
+            placeholder="e.g. denverg50-sudo/KATY-Presenter"
             defaultValue={settings.updateRepo}
             onBlur={(e) => void save({ updateRepo: e.target.value.trim() })}
           />

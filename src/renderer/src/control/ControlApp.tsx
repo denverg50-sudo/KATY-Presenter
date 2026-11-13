@@ -3,7 +3,7 @@ import { actions, useStore } from './store'
 
 if (import.meta.env.DEV) {
   // Exposed for the dev smoke test only
-  Object.assign(window, { __selah: { actions, useStore } })
+  Object.assign(window, { __katy: { actions, useStore } })
 }
 import { Toolbar } from './Toolbar'
 import { ServicePanel } from './ServicePanel'

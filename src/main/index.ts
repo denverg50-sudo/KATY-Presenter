@@ -69,7 +69,7 @@ function registerIpc(): void {
     const stamp = new Date().toISOString().slice(0, 10)
     const r = await dialog.showSaveDialog(win, {
       title: 'Back up library',
-      defaultPath: `Selah Backup ${stamp}.zip`,
+      defaultPath: `Katy-Presenter Backup ${stamp}.zip`,
       filters: [{ name: 'Zip', extensions: ['zip'] }]
     })
     if (r.canceled || !r.filePath) return null

@@ -1,4 +1,4 @@
-# Selah Presenter
+# Katy-Presenter
 
 Free worship presentation software for Windows and Mac: a song library, service lists, themes and
 image/video backgrounds, shown full-screen on a projector or TV.
@@ -51,7 +51,7 @@ The library is stored as plain JSON files plus a `media/` folder in the app's da
 The UI only talks to Electron through `window.api`, so a browser version can be added later by
 providing another implementation of that interface.
 
-Visual smoke test (dev only): `SELAH_SMOKE=/tmp/selah-smoke npm run dev` drives the UI with a throwaway
+Visual smoke test (dev only): `KATY_SMOKE=/tmp/katy-smoke npm run dev` drives the UI with a throwaway
 library and saves screenshots of both windows to that folder.
 
 ## Roadmap

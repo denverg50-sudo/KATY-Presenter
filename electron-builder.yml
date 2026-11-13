@@ -1,6 +1,6 @@
-appId: app.selahpresenter.desktop
-productName: Selah Presenter
-copyright: Copyright © 2026 Selah Presenter
+appId: app.katypresenter.desktop
+productName: Katy-Presenter
+copyright: Copyright © 2026 Katy-Presenter
 directories:
   buildResources: build
   output: dist
@@ -25,20 +25,20 @@ mac:
   extendInfo:
     NSHighResolutionCapable: true
 dmg:
-  artifactName: Selah-Presenter-${version}-mac-${arch}.${ext}
-  title: Selah Presenter ${version}
+  artifactName: Katy-Presenter-${version}-mac-${arch}.${ext}
+  title: Katy-Presenter ${version}
 
 win:
   target:
     - target: nsis
       arch: [x64]
 nsis:
-  artifactName: Selah-Presenter-Setup-${version}.${ext}
+  artifactName: Katy-Presenter-Setup-${version}.${ext}
   oneClick: true
   perMachine: false
   createDesktopShortcut: always
   createStartMenuShortcut: true
-  shortcutName: Selah Presenter
+  shortcutName: Katy-Presenter
   deleteAppDataOnUninstall: false
 
 linux:

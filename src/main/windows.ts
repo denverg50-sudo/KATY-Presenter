@@ -36,7 +36,7 @@ export function createControlWindow(): BrowserWindow {
     minHeight: 700,
     show: false,
     backgroundColor: '#15171c',
-    title: 'Selah Presenter',
+    title: 'Katy-Presenter',
     icon,
     webPreferences: { preload, sandbox: true, contextIsolation: true }
   })
@@ -98,7 +98,7 @@ export function applyOutput(next: Settings): void {
       show: false,
       frame: windowed,
       backgroundColor: '#000000',
-      title: 'Selah Output',
+      title: 'Katy-Presenter Output',
       icon,
       enableLargerThanScreen: true,
       webPreferences: { preload, sandbox: true, contextIsolation: true, backgroundThrottling: false }

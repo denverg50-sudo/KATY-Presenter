@@ -5,7 +5,7 @@ import { ControlApp } from './control/ControlApp'
 import { OutputApp } from './output/OutputApp'
 
 if (import.meta.env.DEV) {
-  const errs: string[] = ((window as unknown as { __selahErrors: string[] }).__selahErrors = [])
+  const errs: string[] = ((window as unknown as { __katyErrors: string[] }).__katyErrors = [])
   window.addEventListener('error', (e) => errs.push(String(e.message)))
   window.addEventListener('unhandledrejection', (e) => errs.push(String(e.reason)))
 }

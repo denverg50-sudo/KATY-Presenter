@@ -13,7 +13,7 @@ export function Toolbar() {
   return (
     <header className="toolbar">
       <div className="brand">
-        <span className="brand-mark">✦</span> Selah Presenter
+        <span className="brand-mark">✦</span> Katy-Presenter
       </div>
       {update && (
         <button className="update-pill" onClick={() => window.api.openExternal(update.url)}>

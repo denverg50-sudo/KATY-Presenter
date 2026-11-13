@@ -60,19 +60,23 @@ export function BiblePanel() {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<{ q: string; bibleId: string; verses: PassageVerse[] } | null>(null)
   const latest = useRef(0)
+  const timer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const runSearch = (q: string): void => {
+    clearTimeout(timer.current)
+    const id = ++latest.current
+    void window.api.bibleSearch(bibleId, q).then((verses) => {
+      if (id === latest.current) setResults({ q, bibleId, verses })
+    })
+  }
   useEffect(() => {
     const q = query.trim()
     if (q.length < 2 || !bibleId) {
+      latest.current++ // an in-flight search must not bring results back
       setResults(null)
       return
     }
-    const id = ++latest.current
-    const t = setTimeout(() => {
-      void window.api.bibleSearch(bibleId, q).then((verses) => {
-        if (id === latest.current) setResults({ q, bibleId, verses })
-      })
-    }, SEARCH_DELAY)
-    return () => clearTimeout(t)
+    timer.current = setTimeout(() => runSearch(q), SEARCH_DELAY)
+    return () => clearTimeout(timer.current)
   }, [query, bibleId])
 
   const verseRef = (v: PassageVerse): string => `${bookName(v.book)} ${v.c}:${v.v}`
@@ -130,6 +134,13 @@ export function BiblePanel() {
         value={query}
         spellCheck={false}
         onChange={(e) => setQuery(e.target.value)}
+        onKeyDown={(e) => {
+          const q = query.trim()
+          if (e.key === 'Enter' && q.length >= 2 && bibleId) {
+            e.preventDefault()
+            runSearch(q)
+          }
+        }}
       />
       {results && (
         <div className="hint">

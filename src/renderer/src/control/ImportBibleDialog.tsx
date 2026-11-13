@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { ImportPreview } from '@shared/types'
 import { Modal } from './Modal'
 import { actions } from './store'
+import { replaceTarget } from './bibleMessages'
 
 /** Strip Electron's "Error invoking remote method 'x': Error: " prefix from IPC rejections. */
 export function ipcMessage(e: unknown): string {
@@ -16,6 +17,8 @@ export function ImportBibleDialog(props: { preview: ImportPreview; onClose: () =
   const [replace, setReplace] = useState(!!p.replaceCandidate)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  // Only offer Replace while the abbreviation still matches the existing Bible
+  const target = replaceTarget(p.replaceCandidate, abbrev)
   const missing = p.missing.length > 0
   const missingText = p.missing.slice(0, 10).join(', ') + (p.missing.length > 10 ? ` and ${p.missing.length - 10} more` : '')
 
@@ -33,7 +36,7 @@ export function ImportBibleDialog(props: { preview: ImportPreview; onClose: () =
       await window.api.bibleImportCommit(p.token, {
         name: name.trim(),
         abbrev: abbrev.trim(),
-        replaceId: replace && p.replaceCandidate ? p.replaceCandidate.id : null
+        replaceId: replace && target ? target.id : null
       })
       await actions.refreshBibles()
       props.onClose()
@@ -73,11 +76,11 @@ export function ImportBibleDialog(props: { preview: ImportPreview; onClose: () =
         </p>
         {p.skipped.length > 0 && <p className="hint">Skipped: {p.skipped.join(', ')}</p>}
         {missing && <p className="form-warn">Some books are missing: {missingText}</p>}
-        {p.replaceCandidate && (
+        {target && (
           <div className="radio-col">
             <label className="inline">
               <input type="radio" checked={replace} onChange={() => setReplace(true)} />
-              Replace existing “{p.replaceCandidate.abbrev}”
+              Replace existing “{target.abbrev}”
             </label>
             <label className="inline">
               <input type="radio" checked={!replace} onChange={() => setReplace(false)} />

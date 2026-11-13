@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { BibleMeta, ImportPreview } from '@shared/types'
 import { actions, useStore } from './store'
 import { ImportBibleDialog, ipcMessage } from './ImportBibleDialog'
+import { deleteBibleMessage } from './bibleMessages'
 
 export function BibleSettings() {
   const bibles = useStore((s) => s.bibles)
@@ -49,7 +50,7 @@ export function BibleSettings() {
 
   const remove = async (b: BibleMeta): Promise<void> => {
     const n = services.reduce((t, s) => t + s.items.filter((i) => i.kind === 'scripture' && i.bibleId === b.id).length, 0)
-    if (!confirm(`Delete “${b.name}”? It's used by ${n} passages in your services; they'll show “Bible not installed” until you pick another translation.`)) return
+    if (!confirm(deleteBibleMessage(b.name, n))) return
     try {
       setError('')
       await window.api.bibleRemove(b.id)

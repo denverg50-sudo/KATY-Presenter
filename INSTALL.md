@@ -79,7 +79,7 @@ Once a passage is showing, the bar above the verse slides lets you change that p
 
 1. Open **⚙ Settings → Bibles → Import Bible…** and choose the file.
 2. An **Import Bible** window opens showing how many books, chapters and verses were found, and any books that were skipped or are missing. Check that it looks right.
-3. Edit the **Name** and **Abbreviation** if you like (the abbreviation, such as NIV, is what shows on screen). If you already have a Bible with that abbreviation, choose **Replace existing** or **Add as new**.
+3. Edit the **Name** and **Abbreviation** if you like (the abbreviation, such as NIV, is what shows on screen). If you've already imported a Bible with the same abbreviation, you can choose **Replace existing** or **Add as new**.
 4. Click **Add Bible**. Nothing is added until you do. It then appears in the Bible tab's translation list.
 
 You are responsible for having permission to use any Bible you import.

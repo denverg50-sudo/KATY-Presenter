@@ -108,33 +108,38 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
   let disabledEntries = 0
   let disabledChildren = 0
   let missing = 0
+  let missingChild = 0
 
   /** Build a section for a parent slide; `skip` lists disabled child ids. */
+  const hasTextItems = (id: string): boolean => {
+    const items = isObj(slides[id]) ? (slides[id] as Obj).items : undefined
+    return Array.isArray(items) && items.some((i) => isObj(i) && (i.type === undefined || i.type === 'text'))
+  }
   const buildSection = (id: string, skip: Set<string>): RawSection | null => {
     const slide = slides[id]
     if (!isObj(slide)) return null
     const parts: string[] = []
     const own = slideText(id)
-    if (own !== null) parts.push(own)
+    if (own !== null && own.trim()) parts.push(own)
     for (const c of childIds(slide)) {
       if (skip.has(c)) {
         disabledChildren++
         continue
       }
       const t = slideText(c)
-      if (t === null) missing++
+      if (t === null) missingChild++
       else parts.push(t)
     }
     return { name: groupName(slide), slides: parts }
   }
 
-  const layoutKey = ((): string | undefined => {
-    const settings = isObj(show.settings) ? show.settings : {}
-    const active = str(settings.activeLayout)
-    if (active && layouts[active] !== undefined) return active
-    return Object.keys(layouts)[0]
-  })()
+  const settings = isObj(show.settings) ? show.settings : {}
+  const active = str(settings.activeLayout)
+  const activeMissing = !!active && layouts[active] === undefined
+  const layoutKey = active && !activeMissing ? active : Object.keys(layouts)[0]
   const layout = layoutKey === undefined ? undefined : layouts[layoutKey]
+  const layoutName = (isObj(layout) && str(layout.name)) || layoutKey || ''
+  const referenced = new Set<string>()
   const entries = isObj(layout) && Array.isArray(layout.slides) ? layout.slides : []
 
   const seen = new Map<string, number>()
@@ -144,10 +149,12 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
       continue
     }
     if (entry.disabled === true) {
+      if (typeof entry.id === 'string') referenced.add(entry.id)
       disabledEntries++
       continue
     }
     const id = typeof entry.id === 'string' ? entry.id : ''
+    if (id) referenced.add(id)
     if (!id || !isObj(slides[id])) {
       missing++
       continue
@@ -164,6 +171,7 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
         missing++
         continue
       }
+      if (!sec.slides.length && !hasTextItems(id) && !childIds(slides[id] as Obj).length) continue // media-only slide
       if (sec.name === null) ungrouped++
       idx = sections.push(sec) - 1
       seen.set(key, idx)
@@ -171,6 +179,16 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
     order.push(idx)
   }
 
+  let leftOut = 0
+  if (sections.length) {
+    const children = new Set<string>()
+    for (const sl of Object.values(slides)) if (isObj(sl)) childIds(sl).forEach((c) => children.add(c))
+    const slideHasText = (id: string): boolean =>
+      !!slideText(id)?.trim() || childIds(slides[id] as Obj).some((c) => !!slideText(c)?.trim())
+    for (const id of Object.keys(slides)) {
+      if (isObj(slides[id]) && !children.has(id) && !referenced.has(id) && slideHasText(id)) leftOut++
+    }
+  }
   if (!sections.length) {
     // no usable layout: use the slides in written order, skipping slides that are children
     const children = new Set<string>()
@@ -195,7 +213,14 @@ export function parseFreeShow(json: string, file: string): ImportedSong {
 
   const assembled = assembleSong(sections, order)
 
+  if (activeMissing) notes.add(`Active layout not found; used "${layoutName}"`)
+  if (leftOut) {
+    notes.add(`${leftOut} slide${leftOut === 1 ? '' : 's'} not in the active layout left out`)
+    const n = Object.keys(layouts).length
+    if (n > 1) notes.add(`Show has ${n} layouts; used "${layoutName}"`)
+  }
   if (missing) notes.add('Layout points to a missing slide')
+  if (missingChild) notes.add('A slide points to a missing child slide')
   if (disabledEntries) notes.add(`${disabledEntries} disabled layout ${disabledEntries === 1 ? 'entry' : 'entries'} skipped`)
   if (disabledChildren) {
     notes.add(`${disabledChildren} disabled child slide${disabledChildren === 1 ? '' : 's'} left out`)

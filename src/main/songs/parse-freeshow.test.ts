@@ -147,7 +147,43 @@ describe('parseFreeShow tolerance', () => {
       'f'
     )
     expect(s.lyrics).toBe('[Verse]\n5\nok')
-    expect(s.notes.length).toBeGreaterThan(0)
+    expect(s.notes).toEqual([
+      'Layout points to a missing slide',
+      'Some slide data was in an unexpected format and was skipped'
+    ])
+  })
+
+  it('has no notes when the parent slide is empty but children have text', () => {
+    const s = parseFreeShow(
+      mk({ a: { group: 'Verse', children: ['b'], items: [] }, b: { group: null, items: txt('child') } }, [{ id: 'a' }]),
+      'f'
+    )
+    expect(s.lyrics).toBe('[Verse]\nchild')
+    expect(s.notes).toEqual([])
+  })
+
+  it('quietly skips media-only slides', () => {
+    const s = parseFreeShow(
+      mk({ a: { group: 'Verse', items: txt('x') }, m: { group: 'Intro', items: [{ type: 'media' }] } }, [{ id: 'm' }, { id: 'a' }]),
+      'f'
+    )
+    expect(s.lyrics).toBe('[Verse]\nx')
+    expect(s.notes).toEqual([])
+  })
+
+  it('notes a missing child slide', () => {
+    const s = parseFreeShow(mk({ a: { group: 'Verse', children: ['zz'], items: txt('x') } }, [{ id: 'a' }]), 'f')
+    expect(s.notes).toEqual(['A slide points to a missing child slide'])
+  })
+
+  it('notes slides outside the used layout', () => {
+    const s = parse('other-layout.show')
+    expect(s.lyrics).toBe('[Verse]\nVerse words\n\n[Chorus]\nChorus words')
+    expect(s.notes).toEqual([
+      'Active layout not found; used "Short"',
+      '1 slide not in the active layout left out',
+      'Show has 2 layouts; used "Short"'
+    ])
   })
 })
 

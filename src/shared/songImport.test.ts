@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { assembleSong, normalizeTitle, sectionNameFromCode, type RawSection } from './songImport'
+import { assembleSong, defaultTicked, normalizeTitle, sectionNameFromCode, type RawSection } from './songImport'
 import { buildSlides } from './lyrics'
 
 function roundTrip(sections: RawSection[], order: number[]): string[] {
@@ -161,5 +161,17 @@ describe('sectionNameFromCode', () => {
     expect(sectionNameFromCode('p')).toBe('Pre-Chorus')
     expect(sectionNameFromCode('x9')).toBe('X9')
     expect(sectionNameFromCode('')).toBe('')
+  })
+})
+
+describe('defaultTicked', () => {
+  it('ticks song and lyric categories in any case, and (none)', () => {
+    expect(defaultTicked(null)).toBe(true)
+    expect(defaultTicked('songs')).toBe(true)
+    expect(defaultTicked('Worship Songs')).toBe(true)
+    expect(defaultTicked('LYRICS')).toBe(true)
+    expect(defaultTicked('info')).toBe(false)
+    expect(defaultTicked('Announcements')).toBe(false)
+    expect(defaultTicked('')).toBe(false)
   })
 })

@@ -187,3 +187,8 @@ export function selectForImport(
   }
   return { importKeys, duplicates }
 }
+
+/** FreeShow categories ticked by default: a value containing "song" or "lyric" (any case), and null ("(none)"). */
+export function defaultTicked(category: string | null): boolean {
+  return category === null || /song|lyric/i.test(category)
+}

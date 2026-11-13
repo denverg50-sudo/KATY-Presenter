@@ -43,6 +43,30 @@ export async function runSmoke(dir: string): Promise<void> {
     await js(`__katy.actions.editTheme(null); __katy.actions.editSong(__katy.useStore.getState().songs[0])`)
     await wait(700)
     await shoot('05-song-editor')
+    // Bible tab: look up John 3:16-18 in KJV through the UI, add it to the service, go live, step once
+    await js(`__katy.useStore.setState({ editingSong: null });
+      [...document.querySelectorAll('.tabs button')].find((b) => b.textContent === 'Bible').click()`)
+    await wait(300)
+    await js(`(() => {
+      const fire = (el, proto, value, type) => {
+        Object.getOwnPropertyDescriptor(proto, 'value').set.call(el, value)
+        el.dispatchEvent(new Event(type, { bubbles: true }))
+      }
+      fire(document.querySelector('.ref-row select'), HTMLSelectElement.prototype, 'kjv', 'change')
+      fire(document.querySelector('.ref-input'), HTMLInputElement.prototype, 'John 3:16-18', 'input')
+      fire(document.querySelector('.bible-panel input[type=search]'), HTMLInputElement.prototype, 'loved the world', 'input')
+    })()`)
+    await wait(700)
+    await js(`(() => {
+      document.querySelector('.ref-input').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      const button = (text) => [...document.querySelectorAll('.ref-actions button')].find((b) => b.textContent === text)
+      button('Add to service').click()
+      button('Go live').click()
+    })()`)
+    await wait(600)
+    await js(`__katy.actions.step(1)`)
+    await wait(900)
+    await shoot('06-scripture')
     const errors = await js(`window.__katyErrors || []`)
     await fs.writeFile(path.join(dir, 'errors.json'), JSON.stringify(errors, null, 2))
   } catch (e) {

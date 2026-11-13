@@ -3,6 +3,7 @@ import { abbreviate } from '@shared/lyrics'
 import { SlideRenderer } from '../components/SlideRenderer'
 import { passageKey } from './presentable'
 import { actions, samePresentable, slidesFor, themeFor, titleOf, useStore } from './store'
+import type { VersesPerSlide } from './presentable'
 
 export function SlideGrid() {
   const selected = useStore((s) => s.selected)
@@ -16,13 +17,14 @@ export function SlideGrid() {
   const themes = useStore((s) => s.themes)
   const theme = useStore((s) => themeFor(s.selected, s))
   const live = useStore((s) => s.live)
+  const bibles = useStore((s) => s.bibles)
   const [size, setSize] = useState(260)
 
   if (!selected || (selected.kind === 'song' && !song)) {
     return (
       <div className="placeholder">
-        <h2>Select a song</h2>
-        <p>Pick a song from the library or the service to see its slides.</p>
+        <h2>Select a song or passage</h2>
+        <p>Pick a song, look up a Bible passage, or click an item in the service to see its slides.</p>
         <p className="keys">
           <kbd>→</kbd>/<kbd>Space</kbd> next · <kbd>←</kbd> back · <kbd>B</kbd> black · <kbd>C</kbd> clear text · <kbd>L</kbd>{' '}
           logo · <kbd>Esc</kbd> clear all
@@ -60,6 +62,46 @@ export function SlideGrid() {
             </label>
           </>
         )}
+        {selected.kind === 'scripture' && (
+          <>
+            <label className="inline">
+              Bible
+              <select
+                value={bibles.some((b) => b.id === selected.bibleId) ? selected.bibleId : ''}
+                onChange={(e) => e.target.value && void actions.updateSelectedScripture({ bibleId: e.target.value })}
+              >
+                {!bibles.some((b) => b.id === selected.bibleId) && <option value="">Not installed</option>}
+                {bibles.map((b) => (
+                  <option key={b.id} value={b.id}>
+                    {b.abbrev}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <div className="segmented" title="Verses per slide">
+              {([1, 2, 3] as VersesPerSlide[]).map((n) => (
+                <button
+                  key={n}
+                  className={selected.versesPerSlide === n ? 'active' : ''}
+                  onClick={() => void actions.updateSelectedScripture({ versesPerSlide: n })}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+            <label className="inline">
+              Theme
+              <select value={selected.themeId} onChange={(e) => void actions.updateSelectedScripture({ themeId: e.target.value })}>
+                <option value="">Scripture default</option>
+                {themes.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </>
+        )}
         <input
           type="range"
           min={160}
@@ -85,7 +127,7 @@ export function SlideGrid() {
               <SlideRenderer text={slide.text} footer={'footer' in slide ? slide.footer : null} theme={theme} thumbnail />
               <div className="thumb-label">
                 <span className="num">{i + 1}</span>
-                {slide.label && <span className="tag">{abbreviate(slide.label)}</span>}
+                {slide.label && !('footer' in slide) && <span className="tag">{abbreviate(slide.label)}</span>}
                 <span className="label-text">{slide.label}</span>
               </div>
             </button>
@@ -96,6 +138,7 @@ export function SlideGrid() {
             This song has no lyrics yet. <button onClick={() => actions.editSong(song)}>Add lyrics</button>
           </div>
         )}
+        {!slides.length && selected.kind === 'scripture' && <div className="empty">{status}</div>}
       </div>
     </div>
   )
@@ -110,5 +153,7 @@ function scriptureStatus(s: S): string {
   if (!s.bibles.some((b) => b.id === p.bibleId)) return 'Bible not installed'
   const found = s.passages[passageKey(p.bibleId, p.ref)]
   if (!found) return 'Loading…'
-  return 'error' in found ? found.error : `${found.verses.length} verses · ${p.versesPerSlide} per slide`
+  if ('error' in found) return found.error
+  const n = found.verses.length
+  return `${n} ${n === 1 ? 'verse' : 'verses'} · ${p.versesPerSlide} per slide`
 }

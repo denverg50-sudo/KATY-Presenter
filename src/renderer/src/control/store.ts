@@ -5,6 +5,8 @@ import { buildScriptureSlides, type ScriptureSlide } from '@shared/scripture'
 import { DEFAULT_THEME_ID, newSong } from '@shared/defaults'
 import { asVersesPerSlide, fromServiceItem, passageKey, toServiceItem, type Presentable } from './presentable'
 
+type ScripturePresentable = Extract<Presentable, { kind: 'scripture' }>
+
 export type { Presentable } from './presentable'
 
 const api = window.api
@@ -253,6 +255,32 @@ export const actions = {
   },
   selectItem(item: ServiceItem) {
     actions.select(itemPresentable(item), item.id)
+  },
+
+  /**
+   * Change the selected passage's translation, layout or theme. When it was opened from a service item,
+   * the item is updated too. Whatever is live keeps showing until the operator picks a slide again.
+   */
+  async updateSelectedScripture(patch: Partial<Pick<ScripturePresentable, 'bibleId' | 'themeId' | 'versesPerSlide'>>) {
+    const s = get()
+    if (s.selected?.kind !== 'scripture') return
+    const next: ScripturePresentable = { ...s.selected, ...patch }
+    actions.select(next, s.selectedItemId)
+    const svc = currentService(s)
+    const item = svc?.items.find((i) => i.id === s.selectedItemId)
+    if (svc && item?.kind === 'scripture') {
+      await actions.saveService({ ...svc, items: svc.items.map((i) => (i === item ? toServiceItem(next, i.id) : i)) })
+    }
+  },
+  /** Point a scripture service item at another Bible (e.g. after its Bible was deleted). */
+  async repointItem(itemId: string, bibleId: string) {
+    const svc = currentService()
+    const item = svc?.items.find((i) => i.id === itemId)
+    if (!svc || item?.kind !== 'scripture') return
+    const updated = { ...item, bibleId }
+    await actions.saveService({ ...svc, items: svc.items.map((i) => (i === item ? updated : i)) })
+    if (get().selectedItemId === itemId) actions.selectItem(updated)
+    else void ensureFor(itemPresentable(updated))
   },
 
   // ---------- songs ----------

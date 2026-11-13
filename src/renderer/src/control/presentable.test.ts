@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { fromServiceItem, presentableKey, toServiceItem, type Presentable } from './presentable'
+import { changedBibleIds, fromServiceItem, presentableKey, toServiceItem, type Presentable } from './presentable'
+import type { BibleMeta } from '@shared/types'
 
 const defaults = { versesPerSlide: 2 as const }
 
@@ -58,5 +59,16 @@ describe('presentableKey', () => {
     expect(presentableKey(a)).not.toBe(presentableKey({ ...a, versesPerSlide: 2 }))
     expect(presentableKey(a)).not.toBe(presentableKey({ ...a, bibleId: 'web' }))
     expect(presentableKey({ kind: 'song', songId: 'x' })).not.toBe(presentableKey({ kind: 'song', songId: 'y' }))
+  })
+})
+
+describe('changedBibleIds', () => {
+  const m = (id: string, abbrev = id.toUpperCase(), verseCount = 10): BibleMeta => ({
+    id, name: id, abbrev, builtIn: false, source: 't', bookCount: 1, verseCount
+  })
+  it('flags added, removed, renamed and replaced Bibles only', () => {
+    const before = [m('a'), m('b'), m('c'), m('d')]
+    const after = [m('a'), m('b', 'BB'), m('c', 'C', 11), m('e')]
+    expect([...changedBibleIds(before, after)].sort()).toEqual(['b', 'c', 'd', 'e'])
   })
 })

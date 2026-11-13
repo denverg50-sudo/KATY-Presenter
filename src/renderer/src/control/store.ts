@@ -3,7 +3,7 @@ import type { BibleMeta, LiveState, Passage, Service, ServiceItem, Settings, Son
 import { buildSlides, type Slide } from '@shared/lyrics'
 import { buildScriptureSlides, mapSlideIndex, type ScriptureSlide } from '@shared/scripture'
 import { DEFAULT_THEME_ID, newSong } from '@shared/defaults'
-import { asVersesPerSlide, fromServiceItem, passageKey, samePresentable, toServiceItem, type Presentable } from './presentable'
+import { asVersesPerSlide, changedBibleIds, fromServiceItem, passageKey, samePresentable, toServiceItem, type Presentable } from './presentable'
 import { editFollowsLive, liveToFollow, type FollowEdit } from './liveFollow'
 
 type ScripturePresentable = Extract<Presentable, { kind: 'scripture' }>
@@ -168,6 +168,29 @@ const inflight = new Map<string, Promise<void>>()
 let followSeq = 0
 let following: FollowEdit<Live> | null = null
 
+/**
+ * Look a passage up (again) and store the result, replacing any cached one only when it arrives.
+ * A newer lookup of the same key supersedes this one, so a stale result never wins.
+ */
+function fetchPassage(key: string): Promise<void> {
+  const cut = key.indexOf('|')
+  const bibleId = key.slice(0, cut)
+  if (!get().bibles.some((b) => b.id === bibleId)) {
+    inflight.delete(key)
+    return Promise.resolve()
+  }
+  const pending: Promise<void> = api
+    .biblePassage(bibleId, key.slice(cut + 1))
+    .catch((e: unknown) => ({ error: String(e) }))
+    .then((result) => {
+      if (inflight.get(key) !== pending) return // superseded by a newer lookup (e.g. after refreshBibles)
+      inflight.delete(key)
+      set((s) => ({ passages: { ...s.passages, [key]: result } }))
+    })
+  inflight.set(key, pending)
+  return pending
+}
+
 function ensureFor(p: Presentable | null | undefined): Promise<void> {
   return p?.kind === 'scripture' ? actions.ensurePassage(p.bibleId, p.ref) : Promise.resolve()
 }
@@ -204,21 +227,16 @@ export const actions = {
   /** Reload the installed Bibles (after import, rename or delete). Passages of changed Bibles are looked up again. */
   async refreshBibles() {
     const bibles = await api.listBibles()
-    const before = new Map(get().bibles.map((b) => [b.id, b]))
-    const changed = new Set<string>()
-    for (const b of bibles) {
-      const old = before.get(b.id)
-      if (!old || old.abbrev !== b.abbrev || old.name !== b.name || old.verseCount !== b.verseCount) changed.add(b.id)
-      before.delete(b.id)
-    }
-    for (const id of before.keys()) changed.add(id) // removed
-    set((s) => {
-      const passages = Object.fromEntries(
-        Object.entries(s.passages).filter(([key]) => !changed.has(key.slice(0, key.indexOf('|'))))
-      )
-      return { bibles, passages }
-    })
-    for (const key of [...inflight.keys()]) if (changed.has(key.slice(0, key.indexOf('|')))) inflight.delete(key)
+    const changed = changedBibleIds(get().bibles, bibles)
+    const installed = new Set(bibles.map((b) => b.id))
+    const bibleOf = (key: string): string => key.slice(0, key.indexOf('|'))
+    // Passages of removed Bibles go; those of changed Bibles stay on screen until their new lookup replaces them
+    set((s) => ({
+      bibles,
+      passages: Object.fromEntries(Object.entries(s.passages).filter(([key]) => installed.has(bibleOf(key))))
+    }))
+    const refetch = new Set([...Object.keys(get().passages), ...inflight.keys()].filter((key) => changed.has(bibleOf(key))))
+    for (const key of refetch) void fetchPassage(key)
     const s = get()
     ensureService(currentService(s))
     void ensureFor(s.selected)
@@ -228,19 +246,7 @@ export const actions = {
   ensurePassage(bibleId: string, ref: string): Promise<void> {
     const key = passageKey(bibleId, ref)
     if (key in get().passages || !get().bibles.some((b) => b.id === bibleId)) return Promise.resolve()
-    let pending = inflight.get(key)
-    if (!pending) {
-      pending = api
-        .biblePassage(bibleId, ref)
-        .catch((e: unknown) => ({ error: String(e) }))
-        .then((result) => {
-          if (inflight.get(key) !== pending) return // invalidated by refreshBibles meanwhile
-          inflight.delete(key)
-          set((s) => ({ passages: { ...s.passages, [key]: result } }))
-        })
-      inflight.set(key, pending)
-    }
-    return pending
+    return inflight.get(key) ?? fetchPassage(key)
   },
 
   // ---------- selection ----------

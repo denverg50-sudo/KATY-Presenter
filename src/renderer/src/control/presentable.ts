@@ -1,4 +1,4 @@
-import type { ServiceItem } from '@shared/types'
+import type { BibleMeta, ServiceItem } from '@shared/types'
 
 export type VersesPerSlide = 1 | 2 | 3
 
@@ -49,3 +49,16 @@ export const samePresentable = (a: Presentable | null | undefined, b: Presentabl
       a.ref === b.ref &&
       a.versesPerSlide === b.versesPerSlide &&
       a.themeId === b.themeId)
+
+/** Bibles added, removed, renamed or replaced between two listings (their cached passages are looked up again). */
+export function changedBibleIds(before: BibleMeta[], after: BibleMeta[]): Set<string> {
+  const old = new Map(before.map((b) => [b.id, b]))
+  const changed = new Set<string>()
+  for (const b of after) {
+    const o = old.get(b.id)
+    if (!o || o.abbrev !== b.abbrev || o.name !== b.name || o.verseCount !== b.verseCount) changed.add(b.id)
+    old.delete(b.id)
+  }
+  for (const id of old.keys()) changed.add(id) // removed
+  return changed
+}

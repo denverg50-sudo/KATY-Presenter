@@ -3,11 +3,13 @@ import type { BibleMeta, LiveState, Passage, Service, ServiceItem, Settings, Son
 import { buildSlides, type Slide } from '@shared/lyrics'
 import { buildScriptureSlides, mapSlideIndex, type ScriptureSlide } from '@shared/scripture'
 import { DEFAULT_THEME_ID, newSong } from '@shared/defaults'
-import { asVersesPerSlide, fromServiceItem, passageKey, toServiceItem, type Presentable } from './presentable'
+import { asVersesPerSlide, fromServiceItem, passageKey, samePresentable, toServiceItem, type Presentable } from './presentable'
+import { editFollowsLive, liveToFollow, type FollowEdit } from './liveFollow'
 
 type ScripturePresentable = Extract<Presentable, { kind: 'scripture' }>
 
 export type { Presentable } from './presentable'
+export { samePresentable } from './presentable'
 
 const api = window.api
 
@@ -85,17 +87,6 @@ export function titleOf(p: Presentable | null | undefined, s: SlideSource = get(
   return passage ? `${passage.reference} (${passage.abbrev})` : p.ref
 }
 
-export const samePresentable = (a: Presentable | null | undefined, b: Presentable | null | undefined): boolean =>
-  !!a &&
-  !!b &&
-  (a.kind === 'song'
-    ? b.kind === 'song' && a.songId === b.songId
-    : b.kind === 'scripture' &&
-      a.bibleId === b.bibleId &&
-      a.ref === b.ref &&
-      a.versesPerSlide === b.versesPerSlide &&
-      a.themeId === b.themeId)
-
 export function itemPresentable(item: ServiceItem, s: Pick<State, 'settings'> = get()): Presentable {
   return fromServiceItem(item, { versesPerSlide: asVersesPerSlide(s.settings?.defaultVersesPerSlide) })
 }
@@ -172,6 +163,10 @@ function isLoading(p: Presentable, s: Pick<State, 'bibles' | 'passages'>): boole
 }
 
 const inflight = new Map<string, Promise<void>>()
+
+/** Edits of the on-screen passage: only the latest one re-points live (see liveFollow.ts). */
+let followSeq = 0
+let following: FollowEdit<Live> | null = null
 
 function ensureFor(p: Presentable | null | undefined): Promise<void> {
   return p?.kind === 'scripture' ? actions.ensurePassage(p.bibleId, p.ref) : Promise.resolve()
@@ -268,10 +263,7 @@ export const actions = {
     if (prev?.kind !== 'scripture') return
     const next: ScripturePresentable = { ...prev, ...patch }
     const live = s.live
-    const wasLive =
-      !!live &&
-      live.item.kind === 'scripture' &&
-      (s.selectedItemId !== null ? live.itemId === s.selectedItemId : live.itemId === null && samePresentable(live.item, prev))
+    const wasLive = editFollowsLive({ live, selected: prev, selectedItemId: s.selectedItemId, pending: following })
     actions.select(next, s.selectedItemId)
     const svc = currentService(s)
     const item = svc?.items.find((i) => i.id === s.selectedItemId)
@@ -280,19 +272,24 @@ export const actions = {
         ? actions.saveService({ ...svc, items: svc.items.map((i) => (i === item ? toServiceItem(next, i.id) : i)) })
         : Promise.resolve()
     if (live && wasLive) {
+      const edit: FollowEdit<Live> = { seq: ++followSeq, from: live, target: next }
+      following = edit
       const oldPassage = passageFor(live.item, s)
       await ensureFor(next)
       const now = get()
-      if (now.live === live) {
+      if (following === edit) following = null
+      const base = liveToFollow({ edit, latestSeq: followSeq, nowLive: now.live, newSlideCount: slidesFor(next, now).length })
+      if (base) {
+        const basePassage = (base === live ? oldPassage : passageFor(base.item, now)) ?? oldPassage
         const newPassage = passageFor(next, now)
         const index =
-          oldPassage && newPassage && live.item.kind === 'scripture'
-            ? mapSlideIndex({ passage: oldPassage, versesPerSlide: live.item.versesPerSlide }, live.index, {
+          basePassage && newPassage && base.item.kind === 'scripture'
+            ? mapSlideIndex({ passage: basePassage, versesPerSlide: base.item.versesPerSlide }, base.index, {
                 passage: newPassage,
                 versesPerSlide: next.versesPerSlide
               })
-            : Math.max(0, Math.min(live.index, slidesFor(next, now).length - 1))
-        set({ live: { item: next, itemId: live.itemId, index } })
+            : Math.max(0, Math.min(base.index, slidesFor(next, now).length - 1))
+        set({ live: { item: next, itemId: base.itemId, index } })
       }
     }
     await saving

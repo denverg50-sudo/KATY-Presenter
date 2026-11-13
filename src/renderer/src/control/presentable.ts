@@ -38,3 +38,14 @@ export function presentableKey(p: Presentable): string {
 
 /** Cache key for a looked-up passage (independent of slide layout). */
 export const passageKey = (bibleId: string, ref: string): string => `${bibleId}|${ref}`
+
+export const samePresentable = (a: Presentable | null | undefined, b: Presentable | null | undefined): boolean =>
+  !!a &&
+  !!b &&
+  (a.kind === 'song'
+    ? b.kind === 'song' && a.songId === b.songId
+    : b.kind === 'scripture' &&
+      a.bibleId === b.bibleId &&
+      a.ref === b.ref &&
+      a.versesPerSlide === b.versesPerSlide &&
+      a.themeId === b.themeId)

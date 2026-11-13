@@ -1,4 +1,6 @@
 import { findBook, bookName } from './books'
+import type { Slide } from './lyrics'
+import type { Bible, Passage, PassageVerse } from './types'
 
 export interface VerseRef {
   c: number
@@ -79,4 +81,97 @@ export function formatReference(ref: ScriptureRef): string {
     prev = to
   }
   return `${bookName(ref.book)} ${parts.join(', ')}`
+}
+
+export const VERSE_MARK = (n: number): string => `⟦${n}⟧`
+
+export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: string } {
+  const name = bookName(ref.book)
+  const book = bible.books.find((b) => b.num === ref.book)
+  if (!book) return { error: `${bible.abbrev} doesn't contain ${name}` }
+
+  const verses: PassageVerse[] = []
+  const nChapters = book.chapters.length
+  for (const { from, to } of ref.ranges) {
+    for (const c of [from.c, to.c]) {
+      if (c > nChapters) return { error: `${name} has ${nChapters} chapters` }
+    }
+    for (let c = from.c; c <= to.c; c++) {
+      const texts = book.chapters[c - 1]
+      const first = c === from.c && from.v !== null ? from.v : 1
+      const last = c === to.c && to.v !== null ? to.v : texts.length
+      if (first > texts.length || last > texts.length) {
+        return { error: `${name} ${c} has ${texts.length} verses` }
+      }
+      for (let v = first; v <= last; v++) {
+        verses.push({ book: ref.book, c, v, text: texts[v - 1] })
+      }
+    }
+  }
+  return { bibleId: bible.id, abbrev: bible.abbrev, reference: formatReference(ref), verses }
+}
+
+export interface ScriptureSlide extends Slide {
+  footer: string
+}
+
+// Verses are grouped into runs of consecutive verses, so separate ranges never share a slide.
+export function buildScriptureSlides(
+  p: Passage,
+  versesPerSlide: 1 | 2 | 3,
+  showVerseNumbers: boolean
+): ScriptureSlide[] {
+  const runs: PassageVerse[][] = []
+  for (const verse of p.verses) {
+    const run = runs[runs.length - 1]
+    const prev = run?.[run.length - 1]
+    const consecutive =
+      prev !== undefined &&
+      prev.book === verse.book &&
+      ((prev.c === verse.c && prev.v + 1 === verse.v) || (prev.c + 1 === verse.c && verse.v === 1))
+    if (run && consecutive) run.push(verse)
+    else runs.push([verse])
+  }
+
+  const slides: ScriptureSlide[] = []
+  for (const run of runs) {
+    for (let i = 0; i < run.length; i += versesPerSlide) {
+      const chunk = run.slice(i, i + versesPerSlide)
+      const a = chunk[0]
+      const b = chunk[chunk.length - 1]
+      const full = formatReference({
+        book: a.book,
+        ranges: [{ from: { c: a.c, v: a.v }, to: { c: b.c, v: b.v } }]
+      })
+      const label = full.slice(bookName(a.book).length + 1)
+      slides.push({
+        key: `s${slides.length}`,
+        label,
+        text: chunk
+          .map((v) => (showVerseNumbers ? `${VERSE_MARK(v.v)} ${v.text}` : v.text))
+          .join(' '),
+        footer: `${full} · ${p.abbrev}`
+      })
+    }
+  }
+  return slides
+}
+
+export function searchBible(bible: Bible, query: string, limit = 200): PassageVerse[] {
+  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  if (words.length === 0) return []
+  const out: PassageVerse[] = []
+  for (const book of bible.books) {
+    for (let c = 0; c < book.chapters.length; c++) {
+      for (let v = 0; v < book.chapters[c].length; v++) {
+        const text = book.chapters[c][v]
+        const lower = text.toLowerCase()
+        if (words.every((w) => lower.includes(w))) {
+          out.push({ book: book.num, c: c + 1, v: v + 1, text })
+          if (out.length >= limit) return out
+        }
+      }
+    }
+  }
+  return out
 }

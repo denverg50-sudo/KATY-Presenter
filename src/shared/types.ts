@@ -128,3 +128,41 @@ export interface Api {
 export const mediaUrl = (name: string): string => `media://local/${encodeURIComponent(name)}`
 
 export const isVideo = (name: string): boolean => /\.(mp4|webm|mov|m4v|ogv)$/i.test(name)
+
+export interface BibleBook {
+  num: number
+  chapters: string[][]
+}
+
+export interface Bible {
+  id: string
+  name: string
+  abbrev: string
+  builtIn: boolean
+  source: string
+  books: BibleBook[]
+}
+
+export interface BibleMeta {
+  id: string
+  name: string
+  abbrev: string
+  builtIn: boolean
+  source: string
+  bookCount: number
+  verseCount: number
+}
+
+export interface PassageVerse {
+  book: number
+  c: number
+  v: number
+  text: string
+}
+
+export interface Passage {
+  bibleId: string
+  abbrev: string
+  reference: string
+  verses: PassageVerse[]
+}

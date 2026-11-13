@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { BOOKS, findBook, bookName } from './books'
-import { parseReference, formatReference } from './scripture'
+import {
+  parseReference, formatReference, getPassage, buildScriptureSlides, searchBible, VERSE_MARK
+} from './scripture'
+import type { Bible } from './types'
 
 describe('books', () => {
   it('has 66 numbered books', () => {
@@ -49,5 +52,81 @@ describe('parseReference', () => {
     expect(parseReference('John')).toEqual({ error: 'Add a chapter, e.g. John 3' })
     const r = parseReference('John 3:18-16') as any
     expect(r.error).toContain('backwards')
+  })
+})
+
+const mkBible = (): Bible => ({
+  id: 'tst', name: 'Test Bible', abbrev: 'TST', builtIn: false, source: 'test',
+  books: [
+    {
+      num: 43,
+      chapters: [
+        ['Alpha one.'],
+        ['Beta one.'],
+        ['God had love for one and all.', 'Say one word.', 'A third line of love.', 'Fourth line here.'],
+        ['Chapter four first.', 'Chapter four second.']
+      ]
+    },
+    { num: 65, chapters: [['Jude one.', 'Jude two.', 'Jude three.']] }
+  ]
+})
+const ref = (t: string) => {
+  const r = parseReference(t)
+  if ('error' in r) throw new Error(r.error)
+  return r
+}
+const pass = (t: string) => {
+  const p = getPassage(mkBible(), ref(t))
+  if ('error' in p) throw new Error(p.error)
+  return p
+}
+
+describe('getPassage', () => {
+  it('spans chapters', () => {
+    expect(pass('John 3:2-4:1').verses).toHaveLength(4)
+  })
+  it('whole chapter', () => {
+    const p = pass('John 3')
+    expect(p.verses).toHaveLength(4)
+    expect(p.abbrev).toBe('TST')
+    expect(p.bibleId).toBe('tst')
+    expect(p.reference).toBe('John 3')
+  })
+  it('errors', () => {
+    expect(getPassage(mkBible(), ref('John 3:99'))).toEqual({ error: 'John 3 has 4 verses' })
+    expect(getPassage(mkBible(), ref('John 9:1'))).toEqual({ error: 'John has 4 chapters' })
+    expect(getPassage(mkBible(), ref('Genesis 1:1'))).toEqual({ error: "TST doesn't contain Genesis" })
+  })
+})
+
+describe('buildScriptureSlides', () => {
+  it('groups verses with numbers, labels and footers', () => {
+    const slides = buildScriptureSlides(pass('John 3:1-3'), 2, true)
+    expect(slides).toHaveLength(2)
+    expect(slides[0].text).toBe(`${VERSE_MARK(1)} God had love for one and all. ${VERSE_MARK(2)} Say one word.`)
+    expect(slides[0].label).toBe('3:1–2')
+    expect(slides[0].footer).toBe('John 3:1–2 · TST')
+    expect(slides[1].footer).toBe('John 3:3 · TST')
+    expect(new Set(slides.map((s) => s.key)).size).toBe(2)
+  })
+  it('omits verse numbers when off', () => {
+    const slides = buildScriptureSlides(pass('John 3:1-3'), 2, false)
+    slides.forEach((s) => expect(s.text).not.toContain('⟦'))
+  })
+  it('does not merge across range boundaries', () => {
+    const slides = buildScriptureSlides(pass('John 3:1, 3'), 3, true)
+    expect(slides).toHaveLength(2)
+  })
+})
+
+describe('searchBible', () => {
+  it('requires all words, case-insensitive', () => {
+    expect(searchBible(mkBible(), 'LOVE one').map((v) => v.v)).toEqual([1])
+    expect(searchBible(mkBible(), 'LOVE line').map((v) => v.v)).toEqual([3])
+    expect(searchBible(mkBible(), 'love')).toHaveLength(2)
+  })
+  it('empty query', () => {
+    expect(searchBible(mkBible(), '')).toEqual([])
+    expect(searchBible(mkBible(), '   ')).toEqual([])
   })
 })

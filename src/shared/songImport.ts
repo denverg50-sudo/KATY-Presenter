@@ -1,3 +1,4 @@
+import type { SongImportItem } from './types'
 import { abbreviate, sectionsToLyrics, type Section } from './lyrics'
 
 export interface RawSection {
@@ -159,4 +160,30 @@ export function sectionNameFromCode(code: string): string {
   const name = m && CODE_NAMES[m[1].toLowerCase()]
   if (!name) return c.toUpperCase()
   return m[2] ? `${name} ${m[2]}` : name
+}
+
+/**
+ * Decide which preview items to import. FreeShow items follow their ticked category
+ * (null = the "(none)" bucket); items from other sources are always kept. Library
+ * duplicates and repeats of an earlier kept title go into `duplicates`.
+ */
+export function selectForImport(
+  items: SongImportItem[],
+  tickedCategories: Set<string | null>
+): { importKeys: string[]; duplicates: SongImportItem[] } {
+  const importKeys: string[] = []
+  const duplicates: SongImportItem[] = []
+  const seen = new Set<string>()
+  for (const it of items) {
+    const ticked = it.source !== 'FreeShow' || tickedCategories.has(it.category)
+    if (!ticked) continue
+    const norm = normalizeTitle(it.title)
+    if (it.libraryDuplicate || seen.has(norm)) {
+      duplicates.push(it)
+      continue
+    }
+    seen.add(norm)
+    importKeys.push(it.key)
+  }
+  return { importKeys, duplicates }
 }

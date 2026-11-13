@@ -3,6 +3,9 @@ import path from 'path'
 import { pathToFileURL } from 'url'
 import { Storage } from './storage'
 import { BibleStore } from './bible/store'
+import { SongImporter } from './songs/importer'
+import { parseSongsInBackground } from './songs/background'
+import { SONG_EXTENSIONS } from './songs/scan'
 import {
   applyOutput,
   broadcast,
@@ -32,6 +35,7 @@ app.on('second-instance', () => {
 
 const smokeDir = smokeSetup()
 const storage = new Storage(path.join(app.getPath('userData'), 'library'))
+const songImporter = new SongImporter(storage, parseSongsInBackground)
 // Built-in Bibles ship in resources/ (asar-unpacked); Task 7 wires this store to IPC.
 export const bibleStore = new BibleStore(path.join(app.getPath('userData'), 'library'), path.join(__dirname, '../../resources/bibles'))
 
@@ -112,6 +116,26 @@ function registerIpc(): void {
   ipcMain.handle('bible:import-commit', (_e, token: string, opts: { name: string; abbrev: string; replaceId: string | null }) =>
     bibleStore.commitImport(token, opts)
   )
+  ipcMain.handle('song:import-pick', async (e, mode: 'folder' | 'files') => {
+    const win = BrowserWindow.fromWebContents(e.sender)!
+    const r = await dialog.showOpenDialog(
+      win,
+      mode === 'folder'
+        ? { title: 'Import songs from a folder', properties: ['openDirectory'] }
+        : {
+            title: 'Import song files',
+            properties: ['openFile', 'multiSelections'],
+            filters: [
+              { name: 'Song files', extensions: SONG_EXTENSIONS.map((x) => x.replace(/^\./, '')) },
+              { name: 'All files', extensions: ['*'] }
+            ]
+          }
+    )
+    if (r.canceled || r.filePaths.length === 0) return null
+    return songImporter.prepare(r.filePaths)
+  })
+  ipcMain.handle('song:import-commit', (_e, token: string, keys: string[]) => songImporter.commit(token, keys))
+  ipcMain.handle('song:import-cancel', (_e, token: string) => songImporter.cancel(token))
   ipcMain.handle('bible:update', (_e, id: string, patch: { name?: string; abbrev?: string }) => bibleStore.update(id, patch))
   ipcMain.handle('bible:remove', (_e, id: string) => bibleStore.remove(id))
 

@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from 'react'
 import type { SongImportPreview } from '@shared/types'
-import { defaultTicked, selectForImport } from '@shared/songImport'
+import { categoryLabel, defaultTicked, selectForImport, sourceSummary } from '@shared/songImport'
 import { Modal } from './Modal'
 import { actions } from './store'
 import { ipcMessage } from './ImportBibleDialog'
@@ -44,7 +44,8 @@ export function ImportSongsDialog(props: { preview: SongImportPreview; onClose: 
   const [error, setError] = useState('')
   const [done, setDone] = useState<{ imported: number; skipped: number } | null>(null)
 
-  const { importKeys, duplicates } = useMemo(() => selectForImport(p.items, ticked), [p.items, ticked])
+  const { importKeys, duplicates, unticked } = useMemo(() => selectForImport(p.items, ticked), [p.items, ticked])
+  const from = useMemo(() => sourceSummary(p.items, importKeys), [p.items, importKeys])
   const withNotes = useMemo(() => {
     const keys = new Set(importKeys)
     return p.items.filter((it) => keys.has(it.key) && it.notes.length > 0)
@@ -128,6 +129,7 @@ export function ImportSongsDialog(props: { preview: SongImportPreview; onClose: 
             Read {n(p.fileCount)} {p.fileCount === 1 ? 'file' : 'files'}
             {p.truncated && <span className="form-warn"> — stopped at 5,000 files</span>}
           </p>
+          {from && <p className="import-from sub">From: {from}</p>}
           <div className="import-line">
             <span className="import-icon ok">✔</span>
             {n(count)} {count === 1 ? 'song' : 'songs'} ready to import
@@ -137,6 +139,13 @@ export function ImportSongsDialog(props: { preview: SongImportPreview; onClose: 
             label={`${n(duplicates.length)} already in your library or repeated`}
             lines={duplicates.map((d) => `${d.title} — ${d.file}`)}
           />
+          {categories.length > 0 && (
+            <Expandable
+              icon="–"
+              label={`${n(unticked.length)} not imported (category unticked)`}
+              lines={unticked.map((d) => `${d.title} — ${d.file}`)}
+            />
+          )}
           <Expandable
             icon="⚠"
             tone="warn"
@@ -156,9 +165,9 @@ export function ImportSongsDialog(props: { preview: SongImportPreview; onClose: 
               <span className="seg-label">FreeShow categories</span>
               <div className="row checks">
                 {categories.map(([c, k]) => (
-                  <label key={c ?? '\u0000none'} className="inline">
+                  <label key={c ?? '\u0000none'} className="inline" title={c ?? undefined}>
                     <input type="checkbox" disabled={busy} checked={ticked.has(c)} onChange={() => toggle(c)} />
-                    {c ?? '(none)'} <span className="sub">({n(k)})</span>
+                    {categoryLabel(c)} <span className="sub">({n(k)})</span>
                   </label>
                 ))}
               </div>

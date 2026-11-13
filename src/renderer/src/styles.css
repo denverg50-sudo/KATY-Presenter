@@ -248,6 +248,7 @@ textarea.lyrics { flex: 1; min-height: 240px; resize: none; font: 14px/1.5 ui-mo
 /* ---------- song import ---------- */
 .import-summary { gap: 8px; font-size: 13px; }
 .import-read { margin: 0 0 4px; color: var(--muted); }
+.import-from { margin: -8px 0 4px; font-size: 12px; }
 .import-line { color: var(--text); }
 .import-line > summary { cursor: pointer; list-style: none; display: flex; align-items: center; }
 .import-line > summary::-webkit-details-marker { display: none; }

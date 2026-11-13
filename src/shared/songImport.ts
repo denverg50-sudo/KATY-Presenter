@@ -137,8 +137,9 @@ export function assembleSong(
 
 export function normalizeTitle(t: string): string {
   return t
+    .normalize('NFC')
     .toLowerCase()
-    .replace(/[^\p{L}\p{N}\s]/gu, '')
+    .replace(/[^\p{L}\p{M}\p{N}\s]/gu, '')
     .replace(/\s+/g, ' ')
     .trim()
 }
@@ -165,18 +166,23 @@ export function sectionNameFromCode(code: string): string {
 /**
  * Decide which preview items to import. FreeShow items follow their ticked category
  * (null = the "(none)" bucket); items from other sources are always kept. Library
- * duplicates and repeats of an earlier kept title go into `duplicates`.
+ * duplicates and repeats of an earlier kept title go into `duplicates`; FreeShow items
+ * left out only because their category is unticked go into `unticked`.
  */
 export function selectForImport(
   items: SongImportItem[],
   tickedCategories: Set<string | null>
-): { importKeys: string[]; duplicates: SongImportItem[] } {
+): { importKeys: string[]; duplicates: SongImportItem[]; unticked: SongImportItem[] } {
   const importKeys: string[] = []
   const duplicates: SongImportItem[] = []
+  const unticked: SongImportItem[] = []
   const seen = new Set<string>()
   for (const it of items) {
     const ticked = it.source !== 'FreeShow' || tickedCategories.has(it.category)
-    if (!ticked) continue
+    if (!ticked) {
+      unticked.push(it)
+      continue
+    }
     const norm = normalizeTitle(it.title)
     if (it.libraryDuplicate || seen.has(norm)) {
       duplicates.push(it)
@@ -185,10 +191,37 @@ export function selectForImport(
     seen.add(norm)
     importKeys.push(it.key)
   }
-  return { importKeys, duplicates }
+  return { importKeys, duplicates, unticked }
 }
 
-/** FreeShow categories ticked by default: a value containing "song" or "lyric" (any case), and null ("(none)"). */
+/**
+ * FreeShow categories ticked by default: everything, including null ("(none)"), except
+ * known non-song values: `info`, `presentation`, or anything mentioning announcements,
+ * sermons, scripture, the Bible or notices.
+ */
 export function defaultTicked(category: string | null): boolean {
-  return category === null || /song|lyric/i.test(category)
+  if (category === null) return true
+  const c = category.trim().toLowerCase()
+  if (c === 'info' || c === 'presentation') return false
+  return !/announce|sermon|scripture|bible|notice/.test(c)
+}
+
+const BUILT_IN_CATEGORIES = new Set(['song', 'info', 'presentation'])
+
+/** How a FreeShow category is shown: built-in ids capitalised, generated ids shortened, others raw. */
+export function categoryLabel(category: string | null): string {
+  if (category === null) return '(none)'
+  if (BUILT_IN_CATEGORIES.has(category.toLowerCase())) return category.charAt(0).toUpperCase() + category.slice(1)
+  if (!/\s/.test(category) && category.length >= 8 && /\p{L}/u.test(category) && /\d/.test(category)) {
+    return `Custom category (${category.slice(0, 6)}…)`
+  }
+  return category
+}
+
+/** "FreeShow 487 · Text 1": selected items counted by source, in order of first appearance. */
+export function sourceSummary(items: SongImportItem[], keys: string[]): string {
+  const wanted = new Set(keys)
+  const counts = new Map<string, number>()
+  for (const it of items) if (wanted.has(it.key)) counts.set(it.source, (counts.get(it.source) ?? 0) + 1)
+  return [...counts].map(([s, k]) => `${s} ${k.toLocaleString('en-US')}`).join(' · ')
 }

@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest'
-import { assembleSong, defaultTicked, normalizeTitle, sectionNameFromCode, type RawSection } from './songImport'
+import {
+  assembleSong,
+  categoryLabel,
+  defaultTicked,
+  normalizeTitle,
+  sectionNameFromCode,
+  selectForImport,
+  sourceSummary,
+  type RawSection
+} from './songImport'
 import { buildSlides } from './lyrics'
 
 function roundTrip(sections: RawSection[], order: number[]): string[] {
@@ -151,6 +160,15 @@ describe('normalizeTitle', () => {
   it('ignores case, punctuation and spacing', () => {
     expect(normalizeTitle('  Amazing   Grace! ')).toBe(normalizeTitle('amazing grace'))
   })
+  it('treats NFD and NFC accents as equal', () => {
+    expect(normalizeTitle('Cre\u0301ation')).toBe(normalizeTitle('Cr\u00e9ation'))
+    expect(normalizeTitle('Création')).not.toBe(normalizeTitle('Creation'))
+  })
+  it('keeps combining marks, so Devanagari vowel signs matter', () => {
+    // कल (kal) vs काल (kaal): differ only by the vowel sign ा
+    expect(normalizeTitle('\u0915\u0932')).not.toBe(normalizeTitle('\u0915\u093e\u0932'))
+    expect(normalizeTitle('\u0915\u093e\u0932')).toBe('\u0915\u093e\u0932')
+  })
 })
 
 describe('sectionNameFromCode', () => {
@@ -165,13 +183,54 @@ describe('sectionNameFromCode', () => {
 })
 
 describe('defaultTicked', () => {
-  it('ticks song and lyric categories in any case, and (none)', () => {
+  it('ticks everything except known non-song categories', () => {
     expect(defaultTicked(null)).toBe(true)
-    expect(defaultTicked('songs')).toBe(true)
+    expect(defaultTicked('song')).toBe(true)
     expect(defaultTicked('Worship Songs')).toBe(true)
-    expect(defaultTicked('LYRICS')).toBe(true)
+    expect(defaultTicked('Hymns')).toBe(true)
+    expect(defaultTicked('k3j9x0a2b')).toBe(true)
+    expect(defaultTicked('')).toBe(true)
     expect(defaultTicked('info')).toBe(false)
+    expect(defaultTicked('Info')).toBe(false)
+    expect(defaultTicked('presentation')).toBe(false)
     expect(defaultTicked('Announcements')).toBe(false)
-    expect(defaultTicked('')).toBe(false)
+    expect(defaultTicked('Sunday sermon')).toBe(false)
+    expect(defaultTicked('SCRIPTURE')).toBe(false)
+    expect(defaultTicked('Bible readings')).toBe(false)
+    expect(defaultTicked('Notices')).toBe(false)
+    expect(defaultTicked('information')).toBe(true)
+  })
+})
+
+describe('categoryLabel', () => {
+  it('capitalises built-ins, shortens generated ids, keeps others raw', () => {
+    expect(categoryLabel(null)).toBe('(none)')
+    expect(categoryLabel('song')).toBe('Song')
+    expect(categoryLabel('info')).toBe('Info')
+    expect(categoryLabel('presentation')).toBe('Presentation')
+    expect(categoryLabel('k3j9x0a2b')).toBe('Custom category (k3j9x0…)')
+    expect(categoryLabel('Hymns')).toBe('Hymns')
+    expect(categoryLabel('Songs 2024')).toBe('Songs 2024')
+    expect(categoryLabel('abc123')).toBe('abc123')
+    expect(categoryLabel('abcdefghij')).toBe('abcdefghij')
+    expect(categoryLabel('12345678')).toBe('12345678')
+  })
+})
+
+describe('selectForImport / sourceSummary', () => {
+  const mk = (key: string, title: string, source: string, category: string | null) => ({
+    key, title, file: `${key}.f`, source, category, libraryDuplicate: false, notes: []
+  })
+  const items = [mk('a', 'One', 'FreeShow', 'song'), mk('b', 'Two', 'FreeShow', 'info'), mk('c', 'One', 'FreeShow', 'info'), mk('d', 'Three', 'Text', null)]
+  it('lists items left out only because their category is unticked', () => {
+    const sel = selectForImport(items, new Set<string | null>(['song']))
+    expect(sel.importKeys).toEqual(['a', 'd'])
+    expect(sel.unticked.map((i) => i.key)).toEqual(['b', 'c'])
+    expect(sel.duplicates).toEqual([])
+    expect(sel.importKeys.length + sel.unticked.length + sel.duplicates.length).toBe(items.length)
+  })
+  it('counts selected items by source', () => {
+    expect(sourceSummary(items, ['a', 'b', 'd'])).toBe('FreeShow 2 · Text 1')
+    expect(sourceSummary(items, [])).toBe('')
   })
 })

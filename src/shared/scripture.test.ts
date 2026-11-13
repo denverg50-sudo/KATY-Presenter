@@ -62,7 +62,7 @@ const mkBible = (): Bible => ({
       num: 43,
       chapters: [
         ['Alpha one.'],
-        ['Beta one.'],
+        [],
         ['God had love for one and all.', 'Say one word.', 'A third line of love.', 'Fourth line here.'],
         ['Chapter four first.', 'Chapter four second.']
       ]
@@ -92,6 +92,9 @@ describe('getPassage', () => {
     expect(p.bibleId).toBe('tst')
     expect(p.reference).toBe('John 3')
   })
+  it('errors on an empty chapter', () => {
+    expect(getPassage(mkBible(), ref('John 2'))).toEqual({ error: "TST doesn't contain John 2" })
+  })
   it('errors', () => {
     expect(getPassage(mkBible(), ref('John 3:99'))).toEqual({ error: 'John 3 has 4 verses' })
     expect(getPassage(mkBible(), ref('John 9:1'))).toEqual({ error: 'John has 4 chapters' })
@@ -112,6 +115,14 @@ describe('buildScriptureSlides', () => {
   it('omits verse numbers when off', () => {
     const slides = buildScriptureSlides(pass('John 3:1-3'), 2, false)
     slides.forEach((s) => expect(s.text).not.toContain('⟦'))
+  })
+  it('does not merge adjacent ranges', () => {
+    expect(buildScriptureSlides(pass('John 3:1-2, 3'), 3, true)).toHaveLength(2)
+  })
+  it('a chapter-crossing range shares a slide', () => {
+    const s = buildScriptureSlides(pass('John 3:4-4:1'), 3, false)
+    expect(s).toHaveLength(1)
+    expect(s[0].label).toBe('3:4–4:1')
   })
   it('does not merge across range boundaries', () => {
     const slides = buildScriptureSlides(pass('John 3:1, 3'), 3, true)

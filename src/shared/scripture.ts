@@ -92,19 +92,20 @@ export function getPassage(bible: Bible, ref: ScriptureRef): Passage | { error: 
 
   const verses: PassageVerse[] = []
   const nChapters = book.chapters.length
-  for (const { from, to } of ref.ranges) {
+  for (const [range, { from, to }] of ref.ranges.entries()) {
     for (const c of [from.c, to.c]) {
       if (c > nChapters) return { error: `${name} has ${nChapters} chapters` }
     }
     for (let c = from.c; c <= to.c; c++) {
       const texts = book.chapters[c - 1]
+      if (!texts || texts.length === 0) return { error: `${bible.abbrev} doesn't contain ${name} ${c}` }
       const first = c === from.c && from.v !== null ? from.v : 1
       const last = c === to.c && to.v !== null ? to.v : texts.length
       if (first > texts.length || last > texts.length) {
         return { error: `${name} ${c} has ${texts.length} verses` }
       }
       for (let v = first; v <= last; v++) {
-        verses.push({ book: ref.book, c, v, text: texts[v - 1] })
+        verses.push({ book: ref.book, c, v, text: texts[v - 1], range })
       }
     }
   }
@@ -115,7 +116,7 @@ export interface ScriptureSlide extends Slide {
   footer: string
 }
 
-// Verses are grouped into runs of consecutive verses, so separate ranges never share a slide.
+// Verses are grouped by the range they came from, so separate ranges never share a slide.
 export function buildScriptureSlides(
   p: Passage,
   versesPerSlide: 1 | 2 | 3,
@@ -125,11 +126,7 @@ export function buildScriptureSlides(
   for (const verse of p.verses) {
     const run = runs[runs.length - 1]
     const prev = run?.[run.length - 1]
-    const consecutive =
-      prev !== undefined &&
-      prev.book === verse.book &&
-      ((prev.c === verse.c && prev.v + 1 === verse.v) || (prev.c + 1 === verse.c && verse.v === 1))
-    if (run && consecutive) run.push(verse)
+    if (run && prev !== undefined && prev.range === verse.range) run.push(verse)
     else runs.push([verse])
   }
 

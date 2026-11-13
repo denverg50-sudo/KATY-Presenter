@@ -158,6 +158,7 @@ export interface PassageVerse {
   c: number
   v: number
   text: string
+  range?: number // index into the reference's ranges (set by getPassage)
 }
 
 export interface Passage {

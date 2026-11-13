@@ -11,6 +11,7 @@ files:
 afterPack: build/afterPack.cjs
 asarUnpack:
   - resources/**
+  - node_modules/sql.js/dist/sql-wasm.wasm
 
 mac:
   category: public.app-category.productivity

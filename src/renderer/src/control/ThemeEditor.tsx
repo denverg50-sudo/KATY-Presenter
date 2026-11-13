@@ -4,7 +4,7 @@ import { DEFAULT_THEME_ID } from '@shared/defaults'
 import { SlideRenderer } from '../components/SlideRenderer'
 import { Modal } from './Modal'
 import { MediaPicker } from './MediaPicker'
-import { actions, slidesOf, useStore } from './store'
+import { actions, slidesFor, useStore } from './store'
 
 const FONTS = [
   ['Helvetica Neue, Arial, sans-serif', 'Helvetica / Arial'],
@@ -39,7 +39,7 @@ export function ThemeEditor() {
 function Editor({ initial }: { initial: Theme }) {
   const settings = useStore((s) => s.settings)!
   const exists = useStore((s) => s.themes.some((t) => t.id === initial.id))
-  const sample = useStore((s) => slidesOf(s.songs.find((x) => x.id === s.selectedSongId))[0]?.text)
+  const sample = useStore((s) => slidesFor(s.selected, s)[0]?.text)
   const [t, setT] = useState(initial)
   const update = (p: Partial<Theme>): void => setT((x) => ({ ...x, ...p, updatedAt: Date.now() }))
   const bg = (p: Partial<Background>): void => update({ background: { ...t.background, ...p } })

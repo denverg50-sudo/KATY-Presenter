@@ -2,10 +2,42 @@ import { useMemo, useState } from 'react'
 import MiniSearch from 'minisearch'
 import type { Song } from '@shared/types'
 import { actions, useStore } from './store'
+import { BiblePanel } from './BiblePanel'
 
+type Tab = 'songs' | 'bible'
+
+/** Left-column library: songs and Bibles in two tabs. Both stay mounted so each keeps what was typed. */
 export function Library() {
+  const [tab, setTab] = useState<Tab>('songs')
+  return (
+    <section className="panel grow library">
+      <div className="panel-head">
+        <div className="segmented tabs" role="tablist">
+          {(['songs', 'bible'] as const).map((t) => (
+            <button key={t} role="tab" aria-selected={tab === t} className={tab === t ? 'active' : ''} onClick={() => setTab(t)}>
+              {t === 'songs' ? 'Songs' : 'Bible'}
+            </button>
+          ))}
+        </div>
+        {tab === 'songs' && (
+          <button className="primary small" onClick={() => actions.newSong()}>
+            + New song
+          </button>
+        )}
+      </div>
+      <div className="tab-body" style={tab === 'songs' ? undefined : { display: 'none' }}>
+        <SongsTab />
+      </div>
+      <div className="tab-body" style={tab === 'bible' ? undefined : { display: 'none' }}>
+        <BiblePanel />
+      </div>
+    </section>
+  )
+}
+
+function SongsTab() {
   const songs = useStore((s) => s.songs)
-  const selected = useStore((s) => s.selectedSongId)
+  const selected = useStore((s) => (s.selected?.kind === 'song' ? s.selected.songId : null))
   const [query, setQuery] = useState('')
 
   const index = useMemo(() => {
@@ -25,13 +57,7 @@ export function Library() {
   }, [query, index, songs])
 
   return (
-    <section className="panel grow">
-      <div className="panel-head">
-        <h2>Song library</h2>
-        <button className="primary small" onClick={() => actions.newSong()}>
-          + New song
-        </button>
-      </div>
+    <>
       <input
         className="search"
         type="search"
@@ -59,6 +85,6 @@ export function Library() {
         ))}
         {!shown.length && <li className="empty">{query ? 'No songs match.' : 'No songs yet.'}</li>}
       </ul>
-    </section>
+    </>
   )
 }

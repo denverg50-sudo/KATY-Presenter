@@ -24,7 +24,15 @@ const api: Api = {
   exportBackup: () => ipcRenderer.invoke('backup:export'),
   importBackup: () => ipcRenderer.invoke('backup:import'),
   checkUpdate: () => ipcRenderer.invoke('update:check'),
-  openExternal: (url) => ipcRenderer.send('open-external', url)
+  openExternal: (url) => ipcRenderer.send('open-external', url),
+  listBibles: () => ipcRenderer.invoke('bible:list'),
+  biblePassage: (id, ref) => ipcRenderer.invoke('bible:passage', id, ref),
+  bibleSearch: (id, q) => ipcRenderer.invoke('bible:search', id, q),
+  bibleImportPick: () => ipcRenderer.invoke('bible:import-pick'),
+  bibleImportCancel: (token) => ipcRenderer.invoke('bible:import-cancel', token),
+  bibleImportCommit: (token, opts) => ipcRenderer.invoke('bible:import-commit', token, opts),
+  bibleUpdate: (id, patch) => ipcRenderer.invoke('bible:update', id, patch),
+  bibleRemove: (id) => ipcRenderer.invoke('bible:remove', id)
 }
 
 contextBridge.exposeInMainWorld('api', api)

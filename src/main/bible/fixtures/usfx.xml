@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<usfx xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <languageCode>eng</languageCode>
+  <book id="PSA">
+    <id id="PSA">Psalms</id>
+    <h>Psalms</h>
+    <toc level="1">Psalms</toc>
+    <p><c id="23"/><v id="1"/>The Maker is my guide; I shall not wander.<ve/></p>
+  </book>
+  <book id="JHN">
+    <h>John</h>
+    <c id="3"/>
+    <s>A heading that is not verse text</s>
+    <p><v id="16"/>For the Giver so cherished the world, “every soul” that trusts shall not perish, café
+      and gain light.<f caller="+"><fr>3:16</fr>ignore me</f><x><xo>3:16</xo>ignore too</x><ve/>
+    <v id="18"/>Skipped ahead.<ve/></p>
+  </book>
+  <book id="TOB">
+    <c id="1"/><p><v id="1"/>Apocryphal sample.<ve/></p>
+  </book>
+</usfx>

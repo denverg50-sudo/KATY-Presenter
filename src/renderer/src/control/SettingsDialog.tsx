@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { DisplayInfo } from '@shared/types'
 import { Modal } from './Modal'
 import { MediaPicker } from './MediaPicker'
+import { BibleSettings } from './BibleSettings'
 import { actions, useStore } from './store'
 
 export function SettingsDialog() {
@@ -82,6 +83,8 @@ function Settings() {
             onChange={(e) => void save({ transitionMs: +e.target.value })}
           />
         </label>
+
+        <BibleSettings />
 
         <h3>Logo</h3>
         <p className="hint">Shown full screen when you press L (for example your church logo or announcements loop).</p>

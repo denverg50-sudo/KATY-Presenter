@@ -1,7 +1,7 @@
 {
   "name": "katy-presenter",
   "productName": "Katy-Presenter",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Song lyrics and Bible verse presentation software for churches",
   "author": "Katy-Presenter",
   "license": "MIT",
@@ -11,6 +11,7 @@
     "build": "electron-vite build",
     "start": "electron-vite preview",
     "test": "vitest run",
+    "bibles": "tsx scripts/build-bibles.ts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "dist:mac": "npm run build && node scripts/dist.cjs --mac",
     "dist:win": "npm run build && node scripts/dist.cjs --win",
@@ -21,6 +22,8 @@
     "minisearch": "^7.2.0",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
+    "saxes": "^6.0.0",
+    "sql.js": "^1.16.0",
     "zustand": "^5.1.0"
   },
   "devDependencies": {
@@ -28,10 +31,12 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^6.3.0",
     "electron": "^45.3.1",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.8",
     "vitest": "^5.1.0"

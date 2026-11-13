@@ -1,13 +1,21 @@
 import { create } from 'zustand'
-import type { LiveState, Service, Settings, Song, Theme } from '@shared/types'
+import type { BibleMeta, LiveState, Passage, Service, ServiceItem, Settings, Song, Theme } from '@shared/types'
 import { buildSlides, type Slide } from '@shared/lyrics'
+import { buildScriptureSlides, mapSlideIndex, type ScriptureSlide } from '@shared/scripture'
 import { DEFAULT_THEME_ID, newSong } from '@shared/defaults'
+import { asVersesPerSlide, changedBibleIds, fromServiceItem, passageKey, samePresentable, toServiceItem, type Presentable } from './presentable'
+import { editFollowsLive, liveToFollow, type FollowEdit } from './liveFollow'
+
+type ScripturePresentable = Extract<Presentable, { kind: 'scripture' }>
+
+export type { Presentable } from './presentable'
+export { samePresentable } from './presentable'
 
 const api = window.api
 
 interface Live {
-  songId: string
-  /** Service item the song was launched from, so "next" can continue to the next song */
+  item: Presentable
+  /** Service item this was launched from, so "next" can continue to the next item */
   itemId: string | null
   index: number
 }
@@ -19,8 +27,11 @@ interface State {
   services: Service[]
   settings: Settings | null
   media: string[]
+  bibles: BibleMeta[]
+  /** Looked-up passages by passageKey(bibleId, ref) */
+  passages: Record<string, Passage | { error: string }>
 
-  selectedSongId: string | null
+  selected: Presentable | null
   selectedItemId: string | null
   serviceId: string | null
   live: Live | null
@@ -41,6 +52,45 @@ export function slidesOf(song: Song | undefined): Slide[] {
   return s
 }
 
+const NO_SLIDES: ScriptureSlide[] = []
+const scriptureCache = new WeakMap<Passage, Map<string, ScriptureSlide[]>>()
+
+type SlideSource = Pick<State, 'songs' | 'bibles' | 'passages' | 'settings'>
+
+/** Passage for a scripture item, or undefined while loading / when the lookup failed or the Bible is gone. */
+export function passageFor(p: Presentable | null | undefined, s: SlideSource = get()): Passage | undefined {
+  if (p?.kind !== 'scripture' || !s.bibles.some((b) => b.id === p.bibleId)) return undefined
+  const found = s.passages[passageKey(p.bibleId, p.ref)]
+  return found && !('error' in found) ? found : undefined
+}
+
+/** Slides for anything presentable, from the cache (never fetches). Same array for the same inputs. */
+export function slidesFor(p: Presentable | null | undefined, s: SlideSource = get()): Slide[] | ScriptureSlide[] {
+  if (!p) return NO_SLIDES
+  if (p.kind === 'song') return slidesOf(s.songs.find((x) => x.id === p.songId))
+  const passage = passageFor(p, s)
+  if (!passage) return NO_SLIDES
+  const numbers = s.settings?.showVerseNumbers ?? true
+  const key = `${p.versesPerSlide}|${numbers}`
+  let byLayout = scriptureCache.get(passage)
+  if (!byLayout) scriptureCache.set(passage, (byLayout = new Map()))
+  let slides = byLayout.get(key)
+  if (!slides) byLayout.set(key, (slides = buildScriptureSlides(passage, p.versesPerSlide, numbers)))
+  return slides
+}
+
+/** Display name: song title or passage reference. */
+export function titleOf(p: Presentable | null | undefined, s: SlideSource = get()): string {
+  if (!p) return ''
+  if (p.kind === 'song') return s.songs.find((x) => x.id === p.songId)?.title ?? ''
+  const passage = passageFor(p, s)
+  return passage ? `${passage.reference} (${passage.abbrev})` : p.ref
+}
+
+export function itemPresentable(item: ServiceItem, s: Pick<State, 'settings'> = get()): Presentable {
+  return fromServiceItem(item, { versesPerSlide: asVersesPerSlide(s.settings?.defaultVersesPerSlide) })
+}
+
 const byTitle = (a: { title?: string; name?: string }, b: { title?: string; name?: string }): number =>
   (a.title ?? a.name ?? '').localeCompare(b.title ?? b.name ?? '', undefined, { sensitivity: 'base' })
 
@@ -51,7 +101,9 @@ export const useStore = create<State>(() => ({
   services: [],
   settings: null,
   media: [],
-  selectedSongId: null,
+  bibles: [],
+  passages: {},
+  selected: null,
   selectedItemId: null,
   serviceId: null,
   live: null,
@@ -66,21 +118,96 @@ export const useStore = create<State>(() => ({
 const set = useStore.setState
 const get = useStore.getState
 
-export function themeFor(song: Song | undefined, s: Pick<State, 'themes' | 'settings'> = get()): Theme | null {
-  const id = song?.themeId || s.settings?.defaultThemeId || DEFAULT_THEME_ID
+export function themeFor(
+  p: Presentable | null | undefined,
+  s: Pick<State, 'themes' | 'settings' | 'songs'> = get()
+): Theme | null {
+  const own =
+    p?.kind === 'song'
+      ? s.songs.find((x) => x.id === p.songId)?.themeId
+      : p?.kind === 'scripture'
+        ? p.themeId || s.settings?.scriptureThemeId
+        : undefined
+  const id = own || s.settings?.defaultThemeId || DEFAULT_THEME_ID
   return s.themes.find((t) => t.id === id) ?? s.themes.find((t) => t.id === s.settings?.defaultThemeId) ?? s.themes[0] ?? null
 }
 
 export const currentService = (s: State = get()): Service | undefined => s.services.find((x) => x.id === s.serviceId)
 
+/**
+ * The first service item after (dir 1) or before (dir -1) `itemId` that has slides.
+ * Items with none (missing song or Bible, failed lookup, empty lyrics) are skipped.
+ * With `pending`, a scripture item whose passage is still loading stops the search there.
+ */
+export function neighbour(
+  s: State,
+  itemId: string | null,
+  dir: 1 | -1
+): { item: ServiceItem; p: Presentable; slides: Slide[] } | { pending: Presentable } | null {
+  const svc = currentService(s)
+  const pos = svc?.items.findIndex((i) => i.id === itemId) ?? -1
+  if (!svc || pos < 0) return null
+  for (let i = pos + dir; i >= 0 && i < svc.items.length; i += dir) {
+    const item = svc.items[i]
+    const p = itemPresentable(item, s)
+    if (isLoading(p, s)) return { pending: p }
+    const slides = slidesFor(p, s)
+    if (slides.length) return { item, p, slides }
+  }
+  return null
+}
+
+/** A scripture passage whose Bible is installed but whose lookup hasn't come back yet. */
+function isLoading(p: Presentable, s: Pick<State, 'bibles' | 'passages'>): boolean {
+  return p.kind === 'scripture' && s.bibles.some((b) => b.id === p.bibleId) && !(passageKey(p.bibleId, p.ref) in s.passages)
+}
+
+const inflight = new Map<string, Promise<void>>()
+
+/** Edits of the on-screen passage: only the latest one re-points live (see liveFollow.ts). */
+let followSeq = 0
+let following: FollowEdit<Live> | null = null
+
+/**
+ * Look a passage up (again) and store the result, replacing any cached one only when it arrives.
+ * A newer lookup of the same key supersedes this one, so a stale result never wins.
+ */
+function fetchPassage(key: string): Promise<void> {
+  const cut = key.indexOf('|')
+  const bibleId = key.slice(0, cut)
+  if (!get().bibles.some((b) => b.id === bibleId)) {
+    inflight.delete(key)
+    return Promise.resolve()
+  }
+  const pending: Promise<void> = api
+    .biblePassage(bibleId, key.slice(cut + 1))
+    .catch((e: unknown) => ({ error: String(e) }))
+    .then((result) => {
+      if (inflight.get(key) !== pending) return // superseded by a newer lookup (e.g. after refreshBibles)
+      inflight.delete(key)
+      set((s) => ({ passages: { ...s.passages, [key]: result } }))
+    })
+  inflight.set(key, pending)
+  return pending
+}
+
+function ensureFor(p: Presentable | null | undefined): Promise<void> {
+  return p?.kind === 'scripture' ? actions.ensurePassage(p.bibleId, p.ref) : Promise.resolve()
+}
+
+function ensureService(svc: Service | undefined): void {
+  for (const item of svc?.items ?? []) if (item.kind === 'scripture') void ensureFor(itemPresentable(item))
+}
+
 export const actions = {
   async load() {
-    const [songs, themes, services, settings, media] = await Promise.all([
+    const [songs, themes, services, settings, media, bibles] = await Promise.all([
       api.list<Song>('songs'),
       api.list<Theme>('themes'),
       api.list<Service>('services'),
       api.getSettings(),
-      api.listMedia()
+      api.listMedia(),
+      api.listBibles()
     ])
     services.sort((a, b) => b.updatedAt - a.updatedAt)
     set({
@@ -90,13 +217,103 @@ export const actions = {
       services,
       settings,
       media,
+      bibles,
       serviceId: get().serviceId ?? services[0]?.id ?? null
     })
+    ensureService(currentService())
+  },
+
+  // ---------- Bibles ----------
+  /** Reload the installed Bibles (after import, rename or delete). Passages of changed Bibles are looked up again. */
+  async refreshBibles() {
+    const bibles = await api.listBibles()
+    const changed = changedBibleIds(get().bibles, bibles)
+    const installed = new Set(bibles.map((b) => b.id))
+    const bibleOf = (key: string): string => key.slice(0, key.indexOf('|'))
+    // Passages of removed Bibles go; those of changed Bibles stay on screen until their new lookup replaces them
+    set((s) => ({
+      bibles,
+      passages: Object.fromEntries(Object.entries(s.passages).filter(([key]) => installed.has(bibleOf(key))))
+    }))
+    const refetch = new Set([...Object.keys(get().passages), ...inflight.keys()].filter((key) => changed.has(bibleOf(key))))
+    for (const key of refetch) void fetchPassage(key)
+    const s = get()
+    ensureService(currentService(s))
+    void ensureFor(s.selected)
+    void ensureFor(s.live?.item)
+  },
+  /** Look up a passage once and cache it (including lookup errors). Does nothing for a Bible that isn't installed. */
+  ensurePassage(bibleId: string, ref: string): Promise<void> {
+    const key = passageKey(bibleId, ref)
+    if (key in get().passages || !get().bibles.some((b) => b.id === bibleId)) return Promise.resolve()
+    return inflight.get(key) ?? fetchPassage(key)
+  },
+
+  // ---------- selection ----------
+  select(p: Presentable | null, itemId: string | null = null) {
+    set({ selected: p, selectedItemId: itemId })
+    void ensureFor(p)
+  },
+  selectItem(item: ServiceItem) {
+    actions.select(itemPresentable(item), item.id)
+  },
+
+  /**
+   * Change the selected passage's translation, layout or theme. When it was opened from a service item,
+   * the item is updated too. When it is the passage on screen, the output follows, staying on the slide
+   * that holds the first verse that was showing (black/clear/logo are left as they are).
+   */
+  async updateSelectedScripture(patch: Partial<Pick<ScripturePresentable, 'bibleId' | 'themeId' | 'versesPerSlide'>>) {
+    const s = get()
+    const prev = s.selected
+    if (prev?.kind !== 'scripture') return
+    const next: ScripturePresentable = { ...prev, ...patch }
+    const live = s.live
+    const wasLive = editFollowsLive({ live, selected: prev, selectedItemId: s.selectedItemId, pending: following })
+    actions.select(next, s.selectedItemId)
+    const svc = currentService(s)
+    const item = svc?.items.find((i) => i.id === s.selectedItemId)
+    const saving =
+      svc && item?.kind === 'scripture'
+        ? actions.saveService({ ...svc, items: svc.items.map((i) => (i === item ? toServiceItem(next, i.id) : i)) })
+        : Promise.resolve()
+    if (live && wasLive) {
+      const edit: FollowEdit<Live> = { seq: ++followSeq, from: live, target: next }
+      following = edit
+      const oldPassage = passageFor(live.item, s)
+      await ensureFor(next)
+      const now = get()
+      if (following === edit) following = null
+      const base = liveToFollow({ edit, latestSeq: followSeq, nowLive: now.live, newSlideCount: slidesFor(next, now).length })
+      if (base) {
+        const basePassage = (base === live ? oldPassage : passageFor(base.item, now)) ?? oldPassage
+        const newPassage = passageFor(next, now)
+        const index =
+          basePassage && newPassage && base.item.kind === 'scripture'
+            ? mapSlideIndex({ passage: basePassage, versesPerSlide: base.item.versesPerSlide }, base.index, {
+                passage: newPassage,
+                versesPerSlide: next.versesPerSlide
+              })
+            : Math.max(0, Math.min(base.index, slidesFor(next, now).length - 1))
+        set({ live: { item: next, itemId: base.itemId, index } })
+      }
+    }
+    await saving
+  },
+  /** Point a scripture service item at another Bible (e.g. after its Bible was deleted). */
+  async repointItem(itemId: string, bibleId: string) {
+    const svc = currentService()
+    const item = svc?.items.find((i) => i.id === itemId)
+    if (!svc || item?.kind !== 'scripture') return
+    const updated = { ...item, bibleId }
+    await actions.saveService({ ...svc, items: svc.items.map((i) => (i === item ? updated : i)) })
+    if (get().selectedItemId === itemId) actions.selectItem(updated)
+    else void ensureFor(itemPresentable(updated))
   },
 
   // ---------- songs ----------
   selectSong(id: string | null, itemId: string | null = null) {
-    set({ selectedSongId: id, selectedItemId: itemId })
+    actions.select(id ? { kind: 'song', songId: id } : null, itemId)
   },
   newSong() {
     set({ editingSong: newSong() })
@@ -109,7 +326,7 @@ export const actions = {
     await api.save('songs', saved)
     set((s) => ({
       songs: [...s.songs.filter((x) => x.id !== saved.id), saved].sort(byTitle),
-      selectedSongId: saved.id,
+      selected: { kind: 'song', songId: saved.id },
       editingSong: null
     }))
   },
@@ -125,8 +342,8 @@ export const actions = {
     set((s) => ({
       songs: s.songs.filter((x) => x.id !== id),
       services,
-      selectedSongId: s.selectedSongId === id ? null : s.selectedSongId,
-      live: s.live?.songId === id ? null : s.live
+      selected: s.selected?.kind === 'song' && s.selected.songId === id ? null : s.selected,
+      live: s.live?.item.kind === 'song' && s.live.item.songId === id ? null : s.live
     }))
   },
 
@@ -150,16 +367,20 @@ export const actions = {
   },
   selectService(id: string) {
     set({ serviceId: id, selectedItemId: null })
+    ensureService(currentService())
   },
-  async addToService(songId: string, at?: number) {
+  /** Add a song (by id) or any presentable item to the current service, creating one if needed. */
+  async addToService(what: string | Presentable, at?: number) {
+    const p: Presentable = typeof what === 'string' ? { kind: 'song', songId: what } : what
     let svc = currentService()
     if (!svc) {
       await actions.newService(defaultServiceName())
       svc = currentService()!
     }
     const items = [...svc.items]
-    items.splice(at ?? items.length, 0, { id: crypto.randomUUID(), songId })
+    items.splice(at ?? items.length, 0, toServiceItem(p, crypto.randomUUID()))
     await actions.saveService({ ...svc, items })
+    void ensureFor(p)
   },
   async moveItem(itemId: string, to: number) {
     const svc = currentService()
@@ -178,32 +399,34 @@ export const actions = {
   },
 
   // ---------- live control ----------
-  goLive(songId: string, index: number, itemId: string | null = get().selectedItemId) {
-    set({ live: { songId, index, itemId }, clear: false, black: false, logo: false })
+  goLive(item: Presentable, index: number, itemId: string | null = get().selectedItemId) {
+    set({ live: { item, index, itemId }, clear: false, black: false, logo: false })
+    void ensureFor(item)
   },
-  step(dir: 1 | -1) {
+  /** Next/previous slide; past either end it continues into the neighbouring service item. */
+  async step(dir: 1 | -1): Promise<void> {
     const s = get()
     if (!s.live) {
-      if (s.selectedSongId) actions.goLive(s.selectedSongId, 0)
+      if (s.selected) actions.goLive(s.selected, 0)
       return
     }
-    const song = s.songs.find((x) => x.id === s.live!.songId)
-    const count = slidesOf(song).length
+    const count = slidesFor(s.live.item, s).length
     const index = s.live.index + dir
     if (index >= 0 && index < count) {
       set({ live: { ...s.live, index }, clear: false, black: false, logo: false })
       return
     }
-    // Past the end of a song: continue to the neighbouring song in the service
-    const svc = currentService(s)
-    const pos = svc?.items.findIndex((i) => i.id === s.live!.itemId) ?? -1
-    const item = pos >= 0 ? svc!.items[pos + dir] : undefined
-    if (!item) return
-    const nextSong = s.songs.find((x) => x.id === item.songId)
-    const n = slidesOf(nextSong).length
-    if (!nextSong || !n) return
-    set({ selectedSongId: nextSong.id, selectedItemId: item.id })
-    actions.goLive(nextSong.id, dir === 1 ? 0 : n - 1, item.id)
+    // Past the end: continue to the neighbouring item in the service, waiting for passages still loading
+    const startLive = s.live
+    let next = neighbour(s, startLive.itemId, dir)
+    while (next && 'pending' in next) {
+      await ensureFor(next.pending)
+      if (get().live !== startLive) return // something else went live meanwhile
+      next = neighbour(get(), startLive.itemId, dir)
+    }
+    if (!next) return
+    set({ selected: next.p, selectedItemId: next.item.id })
+    actions.goLive(next.p, dir === 1 ? 0 : next.slides.length - 1, next.item.id)
   },
   toggle(flag: 'black' | 'clear' | 'logo') {
     set((s) => ({ [flag]: !s[flag] }) as Partial<State>)
@@ -247,11 +470,14 @@ export function defaultServiceName(): string {
 
 /** What the audience should see right now, derived from the control state. */
 export function liveState(s: State): LiveState {
-  const song = s.live ? s.songs.find((x) => x.id === s.live!.songId) : undefined
-  const slide = slidesOf(song)[s.live?.index ?? -1]
+  const item = s.live?.item
+  const slide: Slide | ScriptureSlide | undefined = slidesFor(item, s)[s.live?.index ?? -1]
+  const show = !!slide && !s.clear
   return {
-    text: slide && !s.clear ? slide.text : null,
-    theme: song ? themeFor(song, s) : null,
+    text: show ? slide.text : null,
+    footer: show && 'footer' in slide ? slide.footer : null,
+    // A live song that no longer exists has no theme (as before); scripture keeps its theme while loading
+    theme: item && (item.kind === 'scripture' || s.songs.some((x) => x.id === item.songId)) ? themeFor(item, s) : null,
     black: s.black,
     logo: s.logo,
     logoMedia: s.settings?.logoMedia ?? '',

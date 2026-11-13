@@ -100,6 +100,7 @@ export class Storage {
   async exportZip(target: string): Promise<void> {
     const zip = new AdmZip()
     for (const k of [...KINDS, 'media']) zip.addLocalFolder(path.join(this.root, k), k)
+    if (await exists(path.join(this.root, 'bibles'))) zip.addLocalFolder(path.join(this.root, 'bibles'), 'bibles')
     zip.addLocalFile(path.join(this.root, 'settings.json'))
     await zip.writeZipPromise(target)
   }
@@ -110,10 +111,11 @@ export class Storage {
     for (const entry of zip.getEntries()) {
       if (entry.isDirectory) continue
       const [top, ...rest] = entry.entryName.split('/')
-      if (![...KINDS, 'media'].includes(top) || rest.length !== 1) continue
+      if (![...KINDS, 'media', 'bibles'].includes(top) || rest.length !== 1) continue
       const name = rest[0]
       if (name.startsWith('.') || name.includes('..')) continue
       if (top !== 'media' && !(name.endsWith('.json') && SAFE_ID.test(name.slice(0, -5)))) continue
+      if (top === 'bibles') await fs.mkdir(path.join(this.root, 'bibles'), { recursive: true })
       await fs.writeFile(path.join(this.root, top, name), entry.getData())
     }
   }
@@ -126,7 +128,7 @@ async function exists(p: string): Promise<boolean> {
   )
 }
 
-async function writeAtomic(file: string, data: string): Promise<void> {
+export async function writeAtomic(file: string, data: string): Promise<void> {
   const tmp = `${file}.${process.pid}.tmp`
   await fs.writeFile(tmp, data, 'utf8')
   await fs.rename(tmp, file)

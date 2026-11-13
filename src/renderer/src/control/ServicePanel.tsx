@@ -1,10 +1,14 @@
 import { useState } from 'react'
-import { actions, currentService, defaultServiceName, useStore } from './store'
+import { actions, currentService, defaultServiceName, itemPresentable, useStore } from './store'
+import { passageKey } from './presentable'
 
 export function ServicePanel() {
   const services = useStore((s) => s.services)
   const svc = useStore((s) => currentService(s))
   const songs = useStore((s) => s.songs)
+  const bibles = useStore((s) => s.bibles)
+  const passages = useStore((s) => s.passages)
+  const settings = useStore((s) => s.settings)
   const selectedItem = useStore((s) => s.selectedItemId)
   const liveItem = useStore((s) => s.live?.itemId)
   const [dropAt, setDropAt] = useState<number | null>(null)
@@ -63,7 +67,19 @@ export function ServicePanel() {
         onDrop={(e) => onDrop(e, svc?.items.length ?? 0)}
       >
         {svc?.items.map((item, i) => {
-          const song = songs.find((s) => s.id === item.songId)
+          const p = itemPresentable(item, { settings })
+          const song = p.kind === 'song' ? songs.find((s) => s.id === p.songId) : undefined
+          const bible = p.kind === 'scripture' ? bibles.find((b) => b.id === p.bibleId) : undefined
+          const missingBible = p.kind === 'scripture' && !bible
+          const title =
+            p.kind === 'song'
+              ? (song?.title ?? 'Missing song')
+              : bible
+                ? (() => {
+                    const found = passages[passageKey(p.bibleId, p.ref)]
+                    return found && !('error' in found) ? `${found.reference} (${found.abbrev})` : `${p.ref} (${bible.abbrev})`
+                  })()
+                : p.ref
           return (
             <li
               key={item.id}
@@ -71,6 +87,7 @@ export function ServicePanel() {
               className={[
                 item.id === selectedItem ? 'selected' : '',
                 item.id === liveItem ? 'is-live' : '',
+                missingBible ? 'missing-bible' : '',
                 dropAt === i ? 'drop-before' : ''
               ].join(' ')}
               onDragStart={(e) => e.dataTransfer.setData('application/x-item-id', item.id)}
@@ -82,10 +99,34 @@ export function ServicePanel() {
                 e.stopPropagation()
                 onDrop(e, i)
               }}
-              onClick={() => song && actions.selectSong(song.id, item.id)}
+              onClick={() => (p.kind === 'scripture' || song) && actions.selectItem(item)}
             >
               <span className="num">{i + 1}</span>
-              <span className="title">{song?.title ?? 'Missing song'}</span>
+              {p.kind === 'scripture' && (
+                <span className="kind-icon" aria-hidden>
+                  📖
+                </span>
+              )}
+              <span className="title" title={title}>
+                {title}
+              </span>
+              {missingBible && (
+                <div className="missing-note" onClick={(e) => e.stopPropagation()}>
+                  <em>Bible not installed: pick a translation</em>
+                  <select
+                    value=""
+                    aria-label="Pick a translation"
+                    onChange={(e) => e.target.value && void actions.repointItem(item.id, e.target.value)}
+                  >
+                    <option value="">Choose…</option>
+                    {bibles.map((b) => (
+                      <option key={b.id} value={b.id}>
+                        {b.abbrev} – {b.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <button
                 className="icon"
                 title="Remove from service"
@@ -99,7 +140,7 @@ export function ServicePanel() {
             </li>
           )
         })}
-        {!svc?.items.length && <li className="empty">Drag songs here from the library, or double-click a song.</li>}
+        {!svc?.items.length && <li className="empty">Drag songs here, double-click a song, or add a Bible passage.</li>}
       </ol>
     </section>
   )

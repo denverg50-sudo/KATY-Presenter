@@ -1,16 +1,19 @@
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 
 export function Modal(props: { title: string; onClose: () => void; children: ReactNode; footer?: ReactNode; wide?: boolean }) {
+  const backdrop = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') props.onClose()
+      // With stacked modals only the topmost reacts to Escape
+      const all = document.querySelectorAll('.modal-backdrop')
+      if (e.key === 'Escape' && all[all.length - 1] === backdrop.current) props.onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [props.onClose])
 
   return (
-    <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && props.onClose()}>
+    <div ref={backdrop} className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && props.onClose()}>
       <div className={`modal ${props.wide ? 'wide' : ''}`} role="dialog" aria-label={props.title}>
         <header>
           <h2>{props.title}</h2>

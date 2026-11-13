@@ -12,8 +12,9 @@ Requires Node.js 22+.
 ```bash
 npm install
 npm run dev        # run the app with hot reload
-npm test           # unit tests (lyrics parser, storage)
+npm test           # unit tests (lyrics parser, storage, scripture, Bible import)
 npm run typecheck
+npm run bibles     # regenerate the built-in Bibles (needs internet)
 ```
 
 ### Building installers
@@ -42,7 +43,8 @@ The installers are unsigned, so users see a one-time warning (see INSTALL.md). T
 | --- | --- |
 | Electron main process (windows, projector placement, storage, IPC) | `src/main/` |
 | Preload bridge — the only API the UI can use | `src/preload/index.ts` |
-| Shared types, lyrics → slides parser, starter themes | `src/shared/` |
+| Shared types, lyrics → slides parser, reference parser (`scripture.ts`), starter themes | `src/shared/` |
+| Bibles: store, search, importers (Zefania, OpenSong, OSIS, USFX, OpenLP), import worker | `src/main/bible/` |
 | Operator UI (React + Zustand) | `src/renderer/src/control/` |
 | Projector screen | `src/renderer/src/output/` |
 | One slide renderer used for thumbnails, previews and the projector | `src/renderer/src/components/SlideRenderer.tsx` |
@@ -54,9 +56,13 @@ providing another implementation of that interface.
 Visual smoke test (dev only): `KATY_SMOKE=/tmp/katy-smoke npm run dev` drives the UI with a throwaway
 library and saves screenshots of both windows to that folder.
 
+## Built-in Bibles
+
+The KJV, ASV, WEB and BSB (all public domain) live in `resources/bibles/*.json.gz` and ship inside the installer. Copyrighted translations (NIV, ESV, etc.) are never bundled; users import their own licensed files in **Settings → Bibles**. Regenerate them from `seven1m/open-bibles` with `npm run bibles` (optionally `-- --cache <dir>` to reuse downloaded sources).
+
 ## Roadmap
 
-1. Bible verses: bundle public-domain KJV / WEB / BSB (OSIS, USFX, Zefania formats from `seven1m/open-bibles`).
+1. ~~Bible verses~~ (done in 0.2.0: built-in KJV/ASV/WEB/BSB, import of your own Bibles, reference lookup, word search, service-list passages).
 2. Import songs from OpenLyrics XML, plain text, and ProPresenter.
 3. Stage display for musicians and a phone remote over Wi-Fi.
 4. NDI / livestream output.

@@ -56,7 +56,15 @@ export interface Theme {
 
 export interface ServiceItem {
   id: string
-  songId: string
+  /** Missing = song (services saved before Bibles) */
+  kind?: 'song' | 'scripture'
+  songId?: string
+  bibleId?: string
+  /** Formatted scripture reference, e.g. "John 3:16–18" */
+  ref?: string
+  /** Theme override for scripture; empty = scripture theme from Settings */
+  themeId?: string
+  versesPerSlide?: 1 | 2 | 3
 }
 
 export interface Service {
@@ -78,6 +86,11 @@ export interface Settings {
   transitionMs: number
   /** GitHub "owner/repo" checked for new releases; empty disables update checks */
   updateRepo: string
+  /** Theme used for scripture slides; empty = default theme */
+  scriptureThemeId: string
+  defaultBibleId: string
+  defaultVersesPerSlide: number
+  showVerseNumbers: boolean
 }
 
 /** Everything the audience screen needs to draw a frame */
@@ -88,6 +101,8 @@ export interface LiveState {
   logo: boolean
   logoMedia: string
   transitionMs: number
+  /** Scripture reference shown under the text, e.g. "John 3:17 · KJV"; null for songs */
+  footer?: string | null
 }
 
 export interface DisplayInfo {
@@ -123,8 +138,70 @@ export interface Api {
   importBackup(): Promise<boolean>
   checkUpdate(): Promise<UpdateInfo | null>
   openExternal(url: string): void
+  listBibles(): Promise<BibleMeta[]>
+  biblePassage(bibleId: string, ref: string): Promise<Passage | { error: string }>
+  bibleSearch(bibleId: string, q: string): Promise<PassageVerse[]>
+  /** Opens a file dialog; null when cancelled */
+  bibleImportPick(): Promise<ImportPreview | { error: string } | null>
+  bibleImportCancel(token: string): Promise<void>
+  bibleImportCommit(token: string, opts: { name: string; abbrev: string; replaceId: string | null }): Promise<BibleMeta>
+  bibleUpdate(id: string, patch: { name?: string; abbrev?: string }): Promise<BibleMeta>
+  bibleRemove(id: string): Promise<void>
 }
 
 export const mediaUrl = (name: string): string => `media://local/${encodeURIComponent(name)}`
 
 export const isVideo = (name: string): boolean => /\.(mp4|webm|mov|m4v|ogv)$/i.test(name)
+
+export interface BibleBook {
+  num: number
+  chapters: string[][]
+}
+
+export interface Bible {
+  id: string
+  name: string
+  abbrev: string
+  builtIn: boolean
+  source: string
+  books: BibleBook[]
+}
+
+export interface BibleMeta {
+  id: string
+  name: string
+  abbrev: string
+  builtIn: boolean
+  source: string
+  bookCount: number
+  verseCount: number
+}
+
+export interface PassageVerse {
+  book: number
+  c: number
+  v: number
+  text: string
+  range?: number // index into the reference's ranges (set by getPassage)
+}
+
+export interface Passage {
+  bibleId: string
+  abbrev: string
+  reference: string
+  verses: PassageVerse[]
+}
+
+export interface ImportPreview {
+  token: string
+  name: string
+  abbrev: string
+  source: string
+  bookCount: number
+  chapterCount: number
+  verseCount: number
+  skipped: string[]
+  /** Canonical books (in canon order) with no verses in the file */
+  missing: string[]
+  replaceCandidate: BibleMeta | null
+}

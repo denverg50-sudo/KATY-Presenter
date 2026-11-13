@@ -15,6 +15,7 @@ export function OutputApp() {
     <SlideRenderer
       className="output-slide"
       text={live?.text ?? null}
+      footer={live?.footer}
       theme={live?.theme ?? null}
       black={live?.black}
       logo={live?.logo}

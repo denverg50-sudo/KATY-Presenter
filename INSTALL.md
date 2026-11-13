@@ -64,6 +64,30 @@ Most clickers and presentation remotes send Page Up/Page Down, so they work stra
 
 ---
 
+## Bibles
+
+Click the **Bible** tab, pick a translation, and type what you want to show:
+
+- `John 3:16`, `jn 3:16-18`, `1co 13 4`, or `Ps 23` (a whole chapter).
+- Or type words, like `love one another`, to search the whole Bible and click a result.
+
+Once a passage is showing, the bar above the verse slides lets you change that passage's translation, **verses per slide (1, 2 or 3)** and theme. Use **Add to service** to put a passage in the service list next to your songs. The starting choices (default translation, **Scripture theme**, verses per slide, and whether to show verse numbers) are in **⚙ Settings → Bibles**.
+
+**Included Bibles:** King James (KJV), American Standard (ASV), World English (WEB) and Berean Standard (BSB). These are free to use and work with no internet.
+
+**Adding your own Bible (NIV, NKJV, ESV, NLT, The Message…):** these are copyrighted, so they are not included. If your church has permission to use one and has the file:
+
+1. Open **⚙ Settings → Bibles → Import Bible…** and choose the file.
+2. An **Import Bible** window opens showing how many books, chapters and verses were found, and any books that were skipped or are missing. Check that it looks right.
+3. Edit the **Name** and **Abbreviation** if you like (the abbreviation, such as NIV, is what shows on screen). If you've already imported a Bible with the same abbreviation, you can choose **Replace existing** or **Add as new**.
+4. Click **Add Bible**. Nothing is added until you do. It then appears in the Bible tab's translation list.
+
+You are responsible for having permission to use any Bible you import.
+
+Files that work: Zefania XML, OpenSong XML (including `.xmm`), OSIS XML, USFX, OpenLP Bible database (`.sqlite`), and OpenLP CSV (select the books file and the verses file together). In Settings → Bibles you can change a Bible's abbreviation or delete Bibles you imported; the built-in ones can't be deleted.
+
+---
+
 ## Where your songs are stored
 
 - **Windows:** `%APPDATA%\Katy-Presenter\library`

@@ -10,7 +10,11 @@ const UNKNOWN = "This doesn't look like a Bible file. Supported: Zefania, OpenSo
 export async function parseImportFiles(paths: string[]): Promise<ParsedBible> {
   const csvs = paths.filter((p) => p.toLowerCase().endsWith('.csv'))
   if (csvs.length > 0) {
-    if (csvs.length !== 2 || paths.length !== 2) throw new Error('OpenLP CSV needs both the books file and the verses file')
+    if (csvs.length !== 2 || paths.length !== 2) {
+      const kind = csvs.length === 1 && paths.length === 1 ? await csvKind(csvs[0]) : null
+      const base = 'OpenLP CSV needs both the books file and the verses file'
+      throw new Error(kind ? `${base} — you picked only the ${kind} file (${path.basename(csvs[0])}). Pick both together.` : base)
+    }
     return finish(() => parseCsvPair(csvs), csvs[1])
   }
   if (paths.length !== 1) throw new Error(UNKNOWN)
@@ -35,6 +39,23 @@ export async function parseImportFiles(paths: string[]): Promise<ParsedBible> {
     }
     return parseXmlBible(decodeXml(buf), format, name)
   }, file)
+}
+
+/** Which half of an OpenLP CSV pair a file is, from its header (or first row); null if it can't tell. */
+export async function csvKind(file: string): Promise<'books' | 'verses' | null> {
+  let first: string
+  try {
+    first = (await fs.readFile(file, 'utf8')).replace(/^\uFEFF/, '').split(/\r?\n/, 1)[0]
+  } catch {
+    return null
+  }
+  const cols = first.split(',').map((c) => c.trim().replace(/^"|"$/g, '').toLowerCase())
+  if (cols.includes('book_id') && (cols.includes('chapter') || cols.includes('verse'))) return 'verses'
+  if (cols.includes('testament_id') || (cols.includes('name') && cols.includes('abbreviation'))) return 'books'
+  // No header: books rows are id,testament_id,name,abbreviation; verses rows are book_id,chapter,verse,text
+  const num = (i: number): boolean => /^\d+$/.test(cols[i] ?? '')
+  if (cols.length >= 4 && num(0) && num(1)) return num(2) ? 'verses' : 'books'
+  return null
 }
 
 async function parseCsvPair(csvs: string[]): Promise<ParsedBible> {

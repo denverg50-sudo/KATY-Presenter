@@ -70,6 +70,12 @@ describe('BibleStore', () => {
   it('refuses to delete built-ins, deletes imports, and rejects path escapes', async () => {
     await expect(store.remove('kjv')).rejects.toThrow('Built-in Bibles can’t be deleted')
     await expect(store.remove('../x')).rejects.toThrow(/Invalid id/)
+    // the reserved overrides.json is never treated as an imported Bible
+    await store.update('kjv', { abbrev: 'AV' })
+    await expect(store.remove('overrides')).rejects.toThrow(/Invalid id/)
+    await expect(store.update('overrides', { name: 'x' })).rejects.toThrow(/Invalid id/)
+    expect(await store.passage('overrides', 'John 3:1')).toEqual({ error: 'Bible not found: overrides' })
+    expect(existsSync(path.join(lib, 'bibles', 'overrides.json'))).toBe(true)
     const p = await prep()
     const m = await store.commitImport(p.token, { name: p.name, abbrev: p.abbrev, replaceId: null })
     await store.remove(m.id)
@@ -104,6 +110,16 @@ describe('BibleStore', () => {
     const csv = path.join(dir, 'v.csv')
     writeFileSync(csv, 'a,b')
     expect(await store.prepareImport([csv])).toEqual({ error: 'OpenLP CSV needs both the books file and the verses file' })
+    const versesCsv = path.join(dir, 'kjv-verses.csv')
+    writeFileSync(versesCsv, 'book_id,chapter,verse,text\n1,1,1,In the beginning\n')
+    expect(await store.prepareImport([versesCsv])).toEqual({
+      error: 'OpenLP CSV needs both the books file and the verses file — you picked only the verses file (kjv-verses.csv). Pick both together.'
+    })
+    const booksCsv = path.join(dir, 'kjv-books.csv')
+    writeFileSync(booksCsv, '1,1,Genesis,Gen\n')
+    expect(await store.prepareImport([booksCsv])).toEqual({
+      error: 'OpenLP CSV needs both the books file and the verses file — you picked only the books file (kjv-books.csv). Pick both together.'
+    })
     const bad = path.join(dir, 'bad.xml')
     writeFileSync(bad, '<XMLBIBLE><BIBLEBOOK bnumber="1"><CHAPTER cnumber="1"><VERS vnumber="1">a &nope; b</VERS></CHAPTER></XMLBIBLE>')
     const e1 = (await store.prepareImport([bad])) as { error: string }

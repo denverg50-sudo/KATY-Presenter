@@ -12,6 +12,8 @@ import { parseImportFiles } from './parse-files'
 
 const gunzipAsync = promisify(gunzip)
 const SAFE_ID = /^[A-Za-z0-9_-]+$/
+const RESERVED_IDS = ['overrides'] // bibles/overrides.json is not an imported Bible
+const validImportId = (id: string): boolean => SAFE_ID.test(id) && !RESERVED_IDS.includes(id)
 const BUILT_IN_IDS = ['kjv', 'asv', 'web', 'bsb']
 const LRU_SIZE = 3
 
@@ -54,7 +56,7 @@ export class BibleStore {
   }
 
   private importFile(id: string): string {
-    if (!SAFE_ID.test(id)) throw new Error(`Invalid id: ${id}`)
+    if (!validImportId(id)) throw new Error(`Invalid id: ${id}`)
     return path.join(this.dir, `${id}.json`)
   }
 
@@ -148,7 +150,7 @@ export class BibleStore {
         const ab = (await this.overrides())[id]
         if (ab) bible.abbrev = ab
       }
-    } else if (SAFE_ID.test(id)) {
+    } else if (validImportId(id)) {
       try {
         bible = (JSON.parse(await fs.readFile(this.importFile(id), 'utf8')) as ImportFile).bible
       } catch {

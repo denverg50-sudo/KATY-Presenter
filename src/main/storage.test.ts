@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { mkdtempSync, writeFileSync, readdirSync } from 'fs'
+import { mkdtempSync, writeFileSync, readdirSync, mkdirSync } from 'fs'
 import { tmpdir } from 'os'
 import path from 'path'
 import { Storage } from './storage'
@@ -54,11 +54,15 @@ describe('Storage', () => {
   it('round-trips a backup zip', async () => {
     const zip = path.join(root, 'backup.zip')
     await store.save('songs', { id: 'extra', title: 'Extra' })
+    mkdirSync(path.join(root, 'bibles'))
+    writeFileSync(path.join(root, 'bibles', 'abc-1.json'), '{"meta":{}}')
+    writeFileSync(path.join(root, 'bibles', 'overrides.json'), '{"kjv":"AV"}')
     await store.exportZip(zip)
     const other = new Storage(mkdtempSync(path.join(tmpdir(), 'katy-')))
     await other.init()
     await other.remove('songs', 'song-amazing-grace')
     await other.importZip(zip)
     expect(readdirSync(path.join(other.root, 'songs')).sort()).toEqual(['extra.json', 'song-amazing-grace.json'])
+    expect(readdirSync(path.join(other.root, 'bibles')).sort()).toEqual(['abc-1.json', 'overrides.json'])
   })
 })

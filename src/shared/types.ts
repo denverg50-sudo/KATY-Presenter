@@ -167,3 +167,15 @@ export interface Passage {
   reference: string
   verses: PassageVerse[]
 }
+
+export interface ImportPreview {
+  token: string
+  name: string
+  abbrev: string
+  source: string
+  bookCount: number
+  chapterCount: number
+  verseCount: number
+  skipped: string[]
+  replaceCandidate: BibleMeta | null
+}

@@ -175,4 +175,13 @@ describe('shipped built-ins', () => {
     expect(JSON.stringify(r)).toContain('For God so loved the world')
     expect('error' in r).toBe(false)
   })
+
+  it('reads single-chapter books and ranks the phrase first in the real KJV', async () => {
+    const real = new BibleStore(mkdtempSync(path.join(tmpdir(), 'bible-')), path.join(__dirname, '../../../resources/bibles'))
+    const jude = await real.passage('kjv', 'Jude 24-25')
+    expect('error' in jude ? jude.error : jude.verses.map((v) => `${v.c}:${v.v}`)).toEqual(['1:24', '1:25'])
+    const hits = await real.search('kjv', 'God is love')
+    expect(hits.slice(0, 3).map((v) => `${v.book} ${v.c}:${v.v}`)).toContain('62 4:8')
+    expect(hits.every((v) => /(?<![\p{L}\p{N}])is/iu.test(v.text))).toBe(true)
+  })
 })

@@ -182,21 +182,50 @@ export function mapSlideIndex(
   return Math.max(0, at)
 }
 
+const escapeRegExp = (s: string): string => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** Not preceded by a letter or digit: a query word must start a word ("love" finds loveth, not beloved). */
+const WORD_START = '(?<![\\p{L}\\p{N}])'
+const SEPARATOR = '[^\\p{L}\\p{N}]+'
+
+/** The words of a search query, lower-cased. */
+export function queryWords(query: string): string[] {
+  return query.toLowerCase().split(/\s+/).filter(Boolean)
+}
+
+/**
+ * Matches any of `words` at the start of a word, case-insensitive (Unicode-aware).
+ * The one rule shared by search, result snippets and highlighting. Longer words are tried first.
+ */
+export function wordStartRegExp(words: string[], flags: 'iu' | 'giu' = 'iu'): RegExp {
+  const alts = [...words].sort((a, b) => b.length - a.length).map(escapeRegExp)
+  return new RegExp(`${WORD_START}(?:${alts.join('|')})`, flags)
+}
+
+/**
+ * Verses containing every query word at the start of a word, in canon order, except that verses with the
+ * words as a phrase (in order, separated only by spaces or punctuation) come first. At most `limit` verses.
+ */
 export function searchBible(bible: Bible, query: string, limit = 200): PassageVerse[] {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+  const words = queryWords(query)
   if (words.length === 0) return []
-  const out: PassageVerse[] = []
+  const each = words.map((w) => wordStartRegExp([w]))
+  const phrase = words.length > 1 ? new RegExp(WORD_START + words.map(escapeRegExp).join(SEPARATOR), 'iu') : null
+  const exact: PassageVerse[] = []
+  const rest: PassageVerse[] = []
   for (const book of bible.books) {
     for (let c = 0; c < book.chapters.length; c++) {
       for (let v = 0; v < book.chapters[c].length; v++) {
         const text = book.chapters[c][v]
         const lower = text.toLowerCase()
-        if (words.every((w) => lower.includes(w))) {
-          out.push({ book: book.num, c: c + 1, v: v + 1, text })
-          if (out.length >= limit) return out
-        }
+        // cheap substring check first; the word-start regexes only run on candidates
+        if (!words.every((w) => lower.includes(w)) || !each.every((re) => re.test(text))) continue
+        const verse = { book: book.num, c: c + 1, v: v + 1, text }
+        if (!phrase || phrase.test(text)) {
+          exact.push(verse)
+          if (exact.length >= limit) return exact // nothing later can rank higher
+        } else if (rest.length < limit) rest.push(verse)
       }
     }
   }
-  return out
+  return [...exact, ...rest].slice(0, limit)
 }

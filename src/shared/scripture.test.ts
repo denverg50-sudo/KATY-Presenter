@@ -184,6 +184,33 @@ describe('searchBible', () => {
     expect(searchBible(mkBible(), 'LOVE line').map((v) => v.v)).toEqual([3])
     expect(searchBible(mkBible(), 'love')).toHaveLength(2)
   })
+  const words: Bible = {
+    ...mkBible(),
+    books: [
+      {
+        num: 62,
+        chapters: [
+          [
+            'This is his commandment from God.', // "is" only inside his/this... plus a real "is"
+            'He that loveth not knoweth not God; for God is love.',
+            'Love is of God, and the beloved love.',
+            'His glove was this one, God knows.'
+          ]
+        ]
+      }
+    ]
+  }
+  it('matches words at the start of a word only', () => {
+    expect(searchBible(words, 'love').map((v) => v.v)).toEqual([2, 3]) // loveth/Love, not beloved/glove alone
+    expect(searchBible(words, 'God is love').map((v) => v.v)).toEqual([2, 3])
+    expect(searchBible(words, 'is glove')).toEqual([]) // "is" only inside his/this in verse 4
+  })
+  it('lists verses with the exact phrase first, then canon order, capped', () => {
+    expect(searchBible(words, 'love is').map((v) => v.v)).toEqual([3, 2])
+    expect(searchBible(words, 'god is love').map((v) => v.v)).toEqual([2, 3])
+    expect(searchBible(words, 'love is', 1).map((v) => v.v)).toEqual([3])
+    expect(searchBible(words, 'is god', 1).map((v) => v.v)).toEqual([1])
+  })
   it('empty query', () => {
     expect(searchBible(mkBible(), '')).toEqual([])
     expect(searchBible(mkBible(), '   ')).toEqual([])

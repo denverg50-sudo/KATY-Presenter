@@ -1,5 +1,5 @@
 import { BOOKS } from '@shared/books'
-import { formatReference, parseReference, type ScriptureRef } from '@shared/scripture'
+import { formatReference, parseReference, queryWords, wordStartRegExp, type ScriptureRef } from '@shared/scripture'
 
 /** What the reference box shows while the operator types. */
 export type ReferenceReading =
@@ -59,24 +59,26 @@ export function usableReference(r: ReferenceReading): string | null {
   return r.state === 'ok' ? r.formatted : r.state === 'partial' ? r.last : null
 }
 
-/** About 60 characters of a verse around the first match of any query word. */
+/** About 60 characters of a verse around the first word-start match of any query word (same rule as the search). */
 export function snippet(text: string, query: string, length = 60): { text: string; start: boolean; end: boolean } {
-  const lower = text.toLowerCase()
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean)
-  const hits = words.map((w) => lower.indexOf(w)).filter((i) => i >= 0)
-  const at = hits.length ? Math.min(...hits) : 0
+  const words = queryWords(query)
+  const at = words.length ? Math.max(0, text.search(wordStartRegExp(words))) : 0
   const from = Math.max(0, Math.min(at - 20, text.length - length))
   const to = Math.min(text.length, from + length)
   return { text: text.slice(from, to), start: from > 0, end: to < text.length }
 }
 
-/** Split text into plain and matched pieces for highlighting (case-insensitive, any query word). */
+/** Split text into plain and matched pieces for highlighting: query words at the start of a word, case-insensitive. */
 export function highlight(text: string, query: string): { s: string; hit: boolean }[] {
-  const words = query.split(/\s+/).filter(Boolean).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const words = queryWords(query)
   if (!words.length) return [{ s: text, hit: false }]
-  const re = new RegExp(`(${words.join('|')})`, 'gi')
-  return text
-    .split(re)
-    .filter(Boolean)
-    .map((s) => ({ s, hit: words.some((w) => new RegExp(`^${w}$`, 'i').test(s)) }))
+  const out: { s: string; hit: boolean }[] = []
+  let pos = 0
+  for (const m of text.matchAll(wordStartRegExp(words, 'giu'))) {
+    if (m.index > pos) out.push({ s: text.slice(pos, m.index), hit: false })
+    out.push({ s: m[0], hit: true })
+    pos = m.index + m[0].length
+  }
+  if (pos < text.length) out.push({ s: text.slice(pos), hit: false })
+  return out
 }

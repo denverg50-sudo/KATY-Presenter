@@ -60,4 +60,15 @@ describe('snippet and highlight', () => {
     expect(parts.filter((p) => p.hit).map((p) => p.s)).toEqual(['Love', 'one'])
     expect(parts.map((p) => p.s).join('')).toBe('That ye Love one another')
   })
+
+  it('marks only matches at the start of a word', () => {
+    const parts = highlight('This is his beloved; God is love, he loveth.', 'is love')
+    expect(parts.filter((p) => p.hit).map((p) => p.s)).toEqual(['is', 'is', 'love', 'love'])
+    expect(parts.map((p) => p.s).join('')).toBe('This is his beloved; God is love, he loveth.')
+  })
+
+  it('centres the snippet on a word-start match, not a match inside a word', () => {
+    const long = 'He spake of his beloved and of the glove, and this went on and on for many a mile; and God is love.'
+    expect(snippet(long, 'love').text).toContain('God is love')
+  })
 })

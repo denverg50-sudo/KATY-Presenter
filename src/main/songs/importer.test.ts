@@ -8,6 +8,7 @@ import { selectForImport } from '../../shared/songImport'
 import type { ImportedSong } from '../../shared/songImport'
 import type { Song } from '../../shared/types'
 import type { ParseResult } from './scan'
+import { sampleSongs } from '../../shared/defaults'
 
 const song = (title: string, over: Partial<ImportedSong> = {}): ImportedSong => ({
   title, author: 'A', ccli: '', copyright: '', lyrics: `[Verse 1]\n${title}`, arrangement: '',
@@ -86,6 +87,21 @@ describe('SongImporter', () => {
     expect(await imp.commit(p.token, ['0', '1'])).toEqual({ imported: 2, skipped: 0 })
   })
 
+  it('reports songs that may remain when a rollback removal fails', async () => {
+    const imp = new SongImporter(storage, async () => result([song('A1'), song('B2'), song('C3'), song('D4')]))
+    const p = await imp.prepare(['/x'])
+    const real = storage.save.bind(storage)
+    let n = 0
+    vi.spyOn(storage, 'save').mockImplementation(async (k, item) => {
+      if (++n === 3) throw new Error('disk full')
+      return real(k, item)
+    })
+    vi.spyOn(storage, 'remove').mockRejectedValue(new Error('locked'))
+    await expect(imp.commit(p.token, ['0', '1', '2', '3'])).rejects.toThrow(
+      'Import failed — 3 songs may have been added before the error: disk full'
+    )
+  })
+
   it('cancel and a newer prepare invalidate the token', async () => {
     const imp = new SongImporter(storage, async () => result([song('A1')]))
     const p = await imp.prepare(['/x'])
@@ -104,5 +120,54 @@ describe('SongImporter', () => {
     const rej = r.find((x) => x.status === 'rejected') as PromiseRejectedResult
     expect(rej.reason.message).toBe('An import is already in progress.')
     expect((await storage.list<Song>('songs')).filter((s) => s.title === 'A1')).toHaveLength(1)
+  })
+})
+
+describe('SongImporter and the sample song', () => {
+  const sample = sampleSongs()[0]
+  beforeEach(async () => {
+    await storage.remove('songs', 'existing')
+    await storage.save('songs', sample)
+  })
+  const titles = async (): Promise<string[]> => (await storage.list<Song>('songs')).map((s) => s.title).sort()
+  const ids = async (): Promise<string[]> => (await storage.list<Song>('songs')).map((s) => s.id)
+
+  it('an unedited sample is not a library duplicate in prepare', async () => {
+    const imp = new SongImporter(storage, async () => result([song('Amazing Grace'), song('Other')]))
+    const p = await imp.prepare(['/x'])
+    expect(p.items.map((i) => i.libraryDuplicate)).toEqual([false, false])
+  })
+
+  it('an edited sample still counts as a duplicate', async () => {
+    await storage.save('songs', { ...sample, lyrics: sample.lyrics + '\n\nOur own verse' })
+    const imp = new SongImporter(storage, async () => result([song('Amazing Grace')]))
+    const p = await imp.prepare(['/x'])
+    expect(p.items[0].libraryDuplicate).toBe(true)
+    expect(await imp.commit(p.token, ['0'])).toEqual({ imported: 0, skipped: 1 })
+    expect(await ids()).toEqual([sample.id])
+  })
+
+  it('importing the same title replaces the unedited sample', async () => {
+    const imp = new SongImporter(storage, async () => result([song('amazing grace!'), song('Other')]))
+    const p = await imp.prepare(['/x'])
+    expect(await imp.commit(p.token, ['0', '1'])).toEqual({ imported: 2, skipped: 0 })
+    expect(await titles()).toEqual(['Other', 'amazing grace!'])
+    expect(await ids()).not.toContain(sample.id)
+  })
+
+  it('keeps the sample when no imported song has its title', async () => {
+    const imp = new SongImporter(storage, async () => result([song('Other')]))
+    const p = await imp.prepare(['/x'])
+    await imp.commit(p.token, ['0'])
+    expect(await ids()).toContain(sample.id)
+  })
+
+  it('keeps the sample, and the import, when removing the sample fails', async () => {
+    const imp = new SongImporter(storage, async () => result([song('Amazing Grace')]))
+    const p = await imp.prepare(['/x'])
+    vi.spyOn(storage, 'remove').mockRejectedValue(new Error('locked'))
+    expect(await imp.commit(p.token, ['0'])).toEqual({ imported: 1, skipped: 0 })
+    expect(await titles()).toEqual(['Amazing Grace', 'Amazing Grace'])
+    expect(await ids()).toContain(sample.id)
   })
 })

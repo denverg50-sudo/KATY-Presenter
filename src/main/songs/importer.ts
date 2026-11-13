@@ -2,7 +2,21 @@ import { randomUUID } from 'crypto'
 import type { Storage } from '../storage'
 import type { Song, SongImportItem, SongImportPreview } from '../../shared/types'
 import { normalizeTitle, type ImportedSong } from '../../shared/songImport'
+import { sampleSongs } from '../../shared/defaults'
 import type { ParseResult } from './scan'
+
+const SAMPLE = sampleSongs()[0]
+const SAMPLE_TITLE = normalizeTitle(SAMPLE.title)
+
+/** The built-in sample song, still exactly as shipped: it never blocks an import. */
+export function isUneditedSample(s: Song): boolean {
+  return s.id === SAMPLE.id && s.title === SAMPLE.title && s.lyrics === SAMPLE.lyrics && s.arrangement === SAMPLE.arrangement
+}
+
+/** Normalised titles of library songs, leaving out the unedited sample. */
+function libraryTitles(songs: Song[]): Set<string> {
+  return new Set(songs.filter((s) => !isUneditedSample(s)).map((s) => normalizeTitle(s.title)))
+}
 
 const EXPIRED = 'This import has expired or was cancelled. Please choose the files again.'
 
@@ -16,7 +30,7 @@ export class SongImporter {
 
   async prepare(paths: string[]): Promise<SongImportPreview> {
     const result = await this.parse(paths)
-    const library = new Set((await this.storage.list<Song>('songs')).map((s) => normalizeTitle(s.title)))
+    const library = libraryTitles(await this.storage.list<Song>('songs'))
     const token = randomUUID()
     const songs = new Map<string, ImportedSong>()
     const items: SongImportItem[] = result.songs.map((s, i) => {
@@ -60,7 +74,9 @@ export class SongImporter {
     keys: string[]
   ): Promise<{ imported: number; skipped: number }> {
     const { songs } = batch
-    const seen = new Set((await this.storage.list<Song>('songs')).map((s) => normalizeTitle(s.title)))
+    const library = await this.storage.list<Song>('songs')
+    const seen = libraryTitles(library)
+    const sample = library.find(isUneditedSample)
     const toWrite: Song[] = []
     let skipped = 0
     for (const key of new Set(keys)) {
@@ -92,8 +108,22 @@ export class SongImporter {
         await this.storage.save('songs', song)
       }
     } catch (e) {
-      for (const id of written) await this.storage.remove('songs', id).catch(() => {})
-      throw new Error(`Import failed — nothing was added: ${e instanceof Error ? e.message : String(e)}`)
+      let left = 0
+      for (const id of written) {
+        await this.storage.remove('songs', id).catch(() => {
+          left++
+        })
+      }
+      const reason = e instanceof Error ? e.message : String(e)
+      throw new Error(
+        left
+          ? `Import failed — ${left} ${left === 1 ? 'song' : 'songs'} may have been added before the error: ${reason}`
+          : `Import failed — nothing was added: ${reason}`
+      )
+    }
+    // the imported copy replaces the untouched sample; best effort, the new songs are already saved
+    if (sample && toWrite.some((s) => normalizeTitle(s.title) === SAMPLE_TITLE)) {
+      await this.storage.remove('songs', sample.id).catch(() => {})
     }
     if (this.pending === batch) this.pending = null
     return { imported: toWrite.length, skipped }

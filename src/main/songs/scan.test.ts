@@ -84,7 +84,8 @@ describe('parseSongFiles', () => {
     await fs.chmod(path.join(dir, 'locked.txt'), 0)
     const r = await parseSongFiles([dir])
     expect(r.failed.find((f) => f.file === 'huge.txt')?.reason).toBe('File is too large to be a song')
-    if (process.getuid?.() !== 0) expect(r.failed.find((f) => f.file === 'locked.txt')).toBeTruthy()
+    // chmod 0 can't block reading on Windows, and root ignores it
+    if (process.platform !== 'win32' && process.getuid?.() !== 0) expect(r.failed.find((f) => f.file === 'locked.txt')).toBeTruthy()
   })
   it('parseSongsInBackground runs in-process under Vitest', async () => {
     expect((await parseSongsInBackground([dir])).songs).toHaveLength(4)
